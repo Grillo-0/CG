@@ -60,13 +60,9 @@ int main(void) {
 	cg_model_put_shader_prg(&model, shader_prog);
 
 	struct cg_mat4f transform = cg_mat4f_identity();
-	struct cg_mat4f translate = cg_mat4f_translate(0.5, 0.5, 0.0);
-	struct cg_mat4f scale = cg_mat4f_scale(0.25, 0.25, 1.0);
-	struct cg_mat4f rotation = cg_mat4f_rotate_z(PI/4);
-
-	transform = cg_mat4f_multiply(&transform, &rotation);
-	transform = cg_mat4f_multiply(&transform, &scale);
-	transform = cg_mat4f_multiply(&transform, &translate);
+	transform = cg_mat4f_multiply(transform, cg_mat4f_rotate_z(PI/4));
+	transform = cg_mat4f_multiply(transform, cg_mat4f_scale(0.25, 0.25, 1.0));
+	transform = cg_mat4f_multiply(transform, cg_mat4f_translate(0.5, 0.5, 0.0));
 
 	cg_model_put_model_matrix(&model, &transform);
 

@@ -110,20 +110,17 @@ int main(void) {
 	cg_model_put_shader_prg(&model, shader_prog);
 
 	while (!cg_window_should_close()) {
-		struct cg_mat4f transform = cg_mat4f_identity();
-		struct cg_mat4f scale = cg_mat4f_scale(0.25, 0.25, 0.25);
-		struct cg_mat4f rotation_x = cg_mat4f_rotate_x(angle_x);
-		struct cg_mat4f rotation_y = cg_mat4f_rotate_y(angle_y);
 		angle_x += 0.01;
 		angle_y += 0.03;
+
+		struct cg_mat4f transform = cg_mat4f_identity();
+		transform = cg_mat4f_multiply(transform, cg_mat4f_rotate_x(angle_x));
+		transform = cg_mat4f_multiply(transform, cg_mat4f_rotate_y(angle_y));
+		transform = cg_mat4f_multiply(transform, cg_mat4f_scale(0.25, 0.25, 0.25));
 
 		cg_start_render();
 
 		glClearColor(0.1, 0.1, 0.1, 1.0);
-
-		transform = cg_mat4f_multiply(&transform, &rotation_x);
-		transform = cg_mat4f_multiply(&transform, &rotation_y);
-		transform = cg_mat4f_multiply(&transform, &scale);
 
 		cg_model_put_model_matrix(&model, &transform);
 

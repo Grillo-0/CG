@@ -134,13 +134,13 @@ struct cg_mat4f cg_mat4f_rotate_z(float angle) {
 	return ret;
 }
 
-struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f *a, const struct cg_mat4f *b) {
+struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f a, const struct cg_mat4f b) {
 	struct cg_mat4f ret = { 0 };
 
 	for (size_t row = 0; row < 4; row++) {
 		for (size_t col = 0; col < 4; col++) {
 			for (size_t i  = 0; i < 4; i++) {
-				ret.d[m(col, row)] += a->d[m(col, i)] * b->d[m(i, row)];
+				ret.d[m(col, row)] += a.d[m(col, i)] * b.d[m(i, row)];
 			}
 		}
 	}

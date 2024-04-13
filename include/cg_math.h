@@ -35,6 +35,6 @@ struct cg_mat4f cg_mat4f_translate(float x, float y, float z);
 struct cg_mat4f cg_mat4f_rotate_x(float angle);
 struct cg_mat4f cg_mat4f_rotate_y(float angle);
 struct cg_mat4f cg_mat4f_rotate_z(float angle);
-struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f *a, const struct cg_mat4f *b);
+struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f a, const struct cg_mat4f b);
 
 #endif // __CG_MATH_H__

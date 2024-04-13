@@ -78,13 +78,9 @@ int main(void) {
 			angle -= 0.1;
 
 		struct cg_mat4f transform = cg_mat4f_identity();
-		struct cg_mat4f translate = cg_mat4f_translate(x, y, 0.0);
-		struct cg_mat4f scale = cg_mat4f_scale(0.25, 0.25, 1.0);
-		struct cg_mat4f rotate = cg_mat4f_rotate_z(angle);
-
-		transform = cg_mat4f_multiply(&transform, &rotate);
-		transform = cg_mat4f_multiply(&transform, &scale);
-		transform = cg_mat4f_multiply(&transform, &translate);
+		transform = cg_mat4f_multiply(transform, cg_mat4f_rotate_z(angle));
+		transform = cg_mat4f_multiply(transform, cg_mat4f_scale(0.25, 0.25, 1.0));
+		transform = cg_mat4f_multiply(transform, cg_mat4f_translate(x, y, 0.0));
 
 		cg_model_put_model_matrix(&model, &transform);
 
