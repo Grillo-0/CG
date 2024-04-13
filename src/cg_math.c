@@ -161,3 +161,15 @@ struct cg_vec3f cg_vec3f_mat4f_multiply(const struct cg_vec3f vec, const struct 
 
 	return res;
 }
+
+void cg_mat4f_rotation_to_angles(struct cg_mat4f matrix, float *pitch, float *yaw,  float *roll) {
+	if (pitch)
+		*pitch = atan2f(matrix.d[m(1, 2)], matrix.d[m(2, 2)]);
+
+	if (yaw)
+		*yaw = atan2f(-matrix.d[m(0, 2)],
+				((matrix.d[m(2, 2)] > 0) * 2 - 1 ) * hypotf(matrix.d[m(1, 2)], matrix.d[m(2, 2)]));
+
+	if (roll)
+		*roll = atan2f(matrix.d[m(0, 1)], matrix.d[m(0, 1)]);
+}

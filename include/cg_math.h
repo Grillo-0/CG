@@ -47,4 +47,6 @@ struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f a, const struct cg_mat4f
 
 struct cg_vec3f cg_vec3f_mat4f_multiply(const struct cg_vec3f vec, const struct cg_mat4f mat);
 
+void cg_mat4f_rotation_to_angles(struct cg_mat4f matrix, float *pitch, float *yaw, float *roll);
+
 #endif // __CG_MATH_H__
