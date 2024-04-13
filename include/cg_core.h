@@ -28,6 +28,8 @@ struct cg_contex {
 	bool window_should_close;
 
 	bool keys[CG_KEY_LEN];
+	struct cg_vec2f mouse_pos;
+	struct cg_vec2f mouse_rel_pos;
 
 	struct cg_mat4f view_matrix;
 	struct cg_mat4f projection_matrix;

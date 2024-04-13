@@ -11,6 +11,8 @@
 
 #include <stdbool.h>
 
+#include "cg_math.h"
+
 enum cg_keycode {
 	CG_KEY_UNKNOWN,
 
@@ -50,5 +52,8 @@ enum cg_keycode {
 };
 
 bool cg_keycode_is_down(enum cg_keycode code);
+
+struct cg_vec2f cg_mouse_pos();
+struct cg_vec2f cg_mouse_rel_pos();
 
 #endif // __CG_INPUT_H__

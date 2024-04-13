@@ -9,6 +9,10 @@
 #ifndef __CG_MATH_H__
 #define __CG_MATH_H__
 
+struct cg_vec2f {
+	float x, y;
+};
+
 struct cg_vec3f {
 	float x, y, z;
 };

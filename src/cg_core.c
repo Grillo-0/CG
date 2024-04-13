@@ -138,6 +138,12 @@ static void check_events(void) {
 			case SDL_KEYUP:
 				cg_ctx.keys[sdl2_to_cg_kc(e.key.keysym.sym)] = false;
 			break;
+
+			case SDL_MOUSEMOTION:;
+				SDL_MouseMotionEvent *mouse = &e.motion;
+				cg_ctx.mouse_pos = (struct cg_vec2f){mouse->x, mouse->y};
+				cg_ctx.mouse_rel_pos = (struct cg_vec2f){mouse->xrel, mouse->yrel};
+			break;
 		}
 	}
 }
