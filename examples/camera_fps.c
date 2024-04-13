@@ -22,6 +22,8 @@
 int main(void) {
 	cg_window_create("Camera FPS example", 600 , 400);
 
+	cg_disable_cursor();
+
 	size_t suzzanne_obj_len;
 	char *suzzanne_obj = (char*)bed_get("../examples/resources/suzzanne.obj",
 					    &suzzanne_obj_len);
@@ -47,38 +49,10 @@ int main(void) {
 
 	stbi_image_free(data);
 
-	struct cg_vec3f camera_pos = {0, 0, -1};
-	float yaw = 3.14;
-	float pitch = 0;
-
-	cg_camera_set_perspective(1.5, 4.0/6, 0.1, 10);
+	struct cg_camera camera = cg_camera_create((struct cg_vec3f){0, 0, -1}, 1.5, 0.1, 100);
 
 	while (!cg_window_should_close()) {
-		if (cg_keycode_is_down(CG_KEY_W)) {
-			camera_pos.x -= 0.1 * sin(yaw);
-			camera_pos.y += 0.1 * sin(pitch);
-			camera_pos.z -= 0.1 * cos(yaw);
-		}
-
-		if (cg_keycode_is_down(CG_KEY_S)) {
-			camera_pos.x += 0.1 * sin(yaw);
-			camera_pos.y -= 0.1 * sin(pitch);
-			camera_pos.z += 0.1 * cos(yaw);
-		}
-
-		if (cg_keycode_is_down(CG_KEY_Q))
-			pitch -= 0.04;
-
-		if (cg_keycode_is_down(CG_KEY_E))
-			pitch += 0.04;
-
-		if (cg_keycode_is_down(CG_KEY_A))
-			yaw += 0.04;
-
-		if (cg_keycode_is_down(CG_KEY_D))
-			yaw -= 0.04;
-
-		cg_camera_FPS(camera_pos, pitch, yaw);
+		cg_camera_update_FPS(&camera);
 
 		cg_start_render();
 

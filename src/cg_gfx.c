@@ -10,18 +10,18 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <strings.h>
 
 #include <SDL2/SDL.h>
 
 #include <GL/glew.h>
-#include <strings.h>
 
 #define BED_FUNC_PREFIX cg
 #include "external/bed.h"
 
 #include "cg_core.h"
 #include "cg_gfx.h"
+#include "cg_input.h"
 #include "cg_math.h"
 #include "cg_util.h"
 
@@ -556,53 +556,65 @@ void cg_model_draw(struct cg_model *model) {
 	cg_assert(!cg_check_gl());
 }
 
-void cg_camera_look_at(const struct cg_vec3f eye,
-		       const struct cg_vec3f target,
-		       const struct cg_vec3f up) {
+struct cg_camera cg_camera_create(const struct cg_vec3f pos,
+				  const float fov,
+				  const float near_plane,
+				  const float far_plane) {
 
-	struct cg_vec3f new_z = cg_vec3f_normal(cg_vec3f_sub(eye, target));
-	struct cg_vec3f new_x = cg_vec3f_normal(cg_vec3f_cross(up, new_z));
-	struct cg_vec3f new_y = cg_vec3f_cross(new_z, new_x);
+	float aspect = cg_ctx.window.width / cg_ctx.window.height;
 
-	struct cg_mat4f transformation = {{
-		new_x.x, new_x.y, new_x.z, 0.0,
-		new_y.x, new_y.y, new_y.z, 0.0,
-		new_z.x, new_z.y, new_z.z, 0.0,
-		0.0,     0.0,     0.0,     1.0,
-	}};
-
-	struct cg_mat4f translation = cg_mat4f_translate(-eye.x, -eye.y, -eye.z);
-
-	cg_ctx.view_matrix = cg_mat4f_multiply(&translation, &transformation);
-}
-
-void cg_camera_FPS(const struct cg_vec3f camera_pos,
-		   const float pitch_angle,
-		   const float yaw_angle) {
-
-
-	struct cg_mat4f translation = cg_mat4f_translate(-camera_pos.x, -camera_pos.y, -camera_pos.z);
-	struct cg_mat4f rotation_yaw = cg_mat4f_rotate_y(-yaw_angle);
-	struct cg_mat4f rotation_pitch = cg_mat4f_rotate_x(-pitch_angle);
-
-	cg_ctx.view_matrix = cg_mat4f_multiply(&translation, &rotation_yaw);
-	cg_ctx.view_matrix = cg_mat4f_multiply(&cg_ctx.view_matrix, &rotation_pitch);
-}
-
-void cg_camera_set_perspective(float fov, float aspect, float near, float far) {
-	float top = near * tanf(fov / 2);
-	float bottom = -top;
-	float right = top * aspect;
-	float left = -right;
-
-	float_t width = right - left;
-	float_t height = top - bottom;
-	float_t depth = far - near;
+	float_t depth = near_plane - far_plane;
 
 	cg_ctx.projection_matrix = (struct cg_mat4f) {{
-		2 * near / width, 0.0, (right + left)/ width, 0.0,
-		0.0,  2 * near / height, (top + bottom) / height, 0.0,
-		0.0, 0.0, - (far + bottom) / depth,  -2 * far * near / depth,
+		1.0 / (tanf(fov / 2) * aspect), 0.0, 0.0, 0.0,
+		0.0, 1.0 / tanf(fov / 2), 0.0 , 0.0,
+		0.0, 0.0, (near_plane + far_plane) / depth, 2 * near_plane * far_plane / depth,
 		0.0, 0.0, -1.0, 0.0,
 	}};
+
+	return (struct cg_camera) {
+		.pos = pos,
+		.rotation = cg_mat4f_identity(),
+		.fov = fov,
+		.near_plane = near_plane,
+		.far_plane = far_plane,
+	};
+}
+
+void cg_camera_update_FPS(struct cg_camera *camera) {
+	struct cg_vec3f ds = {0};
+
+	if (cg_keycode_is_down(CG_KEY_W))
+		ds.z -= 0.1;
+
+	if (cg_keycode_is_down(CG_KEY_S))
+		ds.z += 0.1;
+
+	if (cg_keycode_is_down(CG_KEY_A))
+		ds.x -= 0.1;
+
+	if (cg_keycode_is_down(CG_KEY_D))
+		ds.x += 0.1;
+
+	struct cg_vec2f rel_pos = cg_mouse_rel_pos();
+
+	rel_pos.x /= cg_ctx.window.width;
+	rel_pos.y /= cg_ctx.window.height;
+
+	rel_pos.x *= 10.0;
+	rel_pos.y *= 10.0;
+
+	camera->rotation = cg_mat4f_multiply(cg_mat4f_rotate_y(rel_pos.x), camera->rotation);
+	camera->rotation = cg_mat4f_multiply(camera->rotation, cg_mat4f_rotate_x(rel_pos.y));
+
+	float pitch, yaw, roll;
+	cg_mat4f_rotation_to_angles(camera->rotation, &pitch, &yaw, &roll);
+	ds = cg_vec3f_mat4f_multiply(ds, cg_mat4f_rotate_y(yaw));
+	camera->pos = cg_vec3f_add(camera->pos, ds);
+
+	struct cg_mat4f translation = cg_mat4f_translate(-camera->pos.x,
+							 -camera->pos.y,
+							 -camera->pos.z);
+
+	cg_ctx.view_matrix = cg_mat4f_multiply(translation, camera->rotation);
 }
