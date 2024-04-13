@@ -29,6 +29,8 @@ void cg_window_create(const char *window_name, size_t width, size_t height) {
 	cg_assert(window != NULL);
 	cg_ctx.window = (struct cg_window) {
 		.base = window,
+		.width = width,
+		.height = height,
 	};
 
 	cg_info("Getting GL context...\n");
@@ -123,6 +125,8 @@ static void check_events(void) {
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 				case SDL_WINDOWEVENT_RESIZED:
 					glViewport(0, 0, w->data1, w->data2);
+					cg_ctx.window.width = w->data1;
+					cg_ctx.window.height = w->data2;
 					break;
 			}
 			break;

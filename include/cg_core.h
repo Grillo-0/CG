@@ -20,6 +20,7 @@
 
 struct cg_window {
 	void *base;
+	size_t width, height;
 };
 
 struct cg_contex {
