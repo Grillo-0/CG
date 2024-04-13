@@ -38,4 +38,7 @@ struct cg_contex {
 void cg_window_create(const char *window_name, size_t width, size_t height);
 bool cg_window_should_close(void);
 
+void cg_enable_cursor(void);
+void cg_disable_cursor(void);
+
 #endif // __CG_CORE_H__

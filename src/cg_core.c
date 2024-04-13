@@ -153,3 +153,10 @@ bool cg_window_should_close(void) {
 	return cg_ctx.window_should_close;
 }
 
+void cg_enable_cursor(void) {
+	cg_assert(!SDL_SetRelativeMouseMode(false));
+}
+
+void cg_disable_cursor(void) {
+	cg_assert(!SDL_SetRelativeMouseMode(true));
+}
