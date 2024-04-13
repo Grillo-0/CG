@@ -148,3 +148,16 @@ struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f a, const struct cg_mat4f
 	return ret;
 }
 
+struct cg_vec3f cg_vec3f_mat4f_multiply(const struct cg_vec3f vec, const struct cg_mat4f mat) {
+	struct cg_vec3f res;
+
+	res.x = vec.x * mat.d[m(0, 0)] + vec.y * mat.d[m(0, 1)] + vec.z * mat.d[m(0, 2)];
+	res.y = vec.x * mat.d[m(1, 0)] + vec.y * mat.d[m(1, 1)] + vec.z * mat.d[m(1, 2)];
+	res.z = vec.x * mat.d[m(2, 0)] + vec.y * mat.d[m(2, 1)] + vec.z * mat.d[m(2, 2)];
+
+	res.x += mat.d[m(0, 3)];
+	res.y += mat.d[m(1, 3)];
+	res.z += mat.d[m(2, 3)];
+
+	return res;
+}
