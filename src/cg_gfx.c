@@ -268,6 +268,21 @@ static void parse_indices(struct da_index *indices, struct lex *l) {
 	cg_da_append(indices, idx);
 }
 
+enum coord {
+	COORD_X = 0,
+	COORD_Y,
+	COORD_Z,
+};
+
+static void find_coord_min_max(const struct da_float da, float *min, float *max, enum coord c) {
+	*min = da.items[c];
+	*max = *min;
+	for (size_t i = c + 3; i < da.len; i += 3) {
+		*min = CG_MIN(da.items[i], *min);
+		*max = CG_MAX(da.items[i], *max);
+	}
+}
+
 struct cg_mesh cg_mesh_from_obj_data(char *data, size_t size) {
 	cg_assert(data != NULL);
 
@@ -302,6 +317,27 @@ struct cg_mesh cg_mesh_from_obj_data(char *data, size_t size) {
 		if (*word == 'f') {
 			parse_indices(&indices, &l);
 		}
+	}
+
+	float x_min, x_max;
+	find_coord_min_max(verts, &x_min, &x_max, COORD_X);
+	float y_min, y_max;
+	find_coord_min_max(verts, &y_min, &y_max, COORD_Y);
+	float z_min, z_max;
+	find_coord_min_max(verts, &z_min, &z_max, COORD_Z);
+
+	float x_size = x_max - x_min;
+	float y_size = y_max - y_min;
+	float z_size = z_max - z_min;
+
+	for (size_t i = 0; i < verts.len; i += 3) {
+		float *x = &verts.items[i + 0];
+		float *y = &verts.items[i + 1];
+		float *z = &verts.items[i + 2];
+
+		*x = (*x - x_size / 2 - x_min) / x_size;
+		*y = (*y - y_size / 2 - y_min) / x_size;
+		*z = (*z - z_size / 2 - z_min) / x_size;
 	}
 
 	float *ex_verts = verts.len == 0 ? NULL : malloc(sizeof(*ex_verts) * indices.len * 3);
