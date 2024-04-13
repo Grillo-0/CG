@@ -26,7 +26,7 @@ struct cg_mat4f {
 struct cg_vec3f cg_vec3f_add(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_sub(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_cross(const struct cg_vec3f a, const struct cg_vec3f b);
-struct cg_vec3f cg_vec3f_normal(const struct cg_vec3f a);
+struct cg_vec3f cg_vec3f_normalize(const struct cg_vec3f a);
 
 void cg_mat4f_print(const struct cg_mat4f *m);
 struct cg_mat4f cg_mat4f_identity(void);
