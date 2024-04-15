@@ -89,7 +89,7 @@ struct cg_mesh cg_mesh_create(const float *verts, const size_t num_verts,
 			      const int *indices, const size_t num_indices,
 			      const float *normals, const size_t num_normals,
 			      const float *uvs, const size_t num_uvs);
-struct cg_mesh cg_mesh_from_obj_data(char *data, size_t size);
+struct cg_mesh cg_mesh_from_obj_file(char *path);
 
 void cg_shader_prg_builder_add_shader(struct cg_shader_prg_builder *builder, const char *src,
 				      int length,

@@ -21,12 +21,7 @@ float angle_x, angle_y;
 int main(void) {
 	cg_window_create("OBJ Loading Example", 400 , 400);
 
-	size_t suzzanne_obj_len;
-	char *suzzanne_obj = (char*)bed_get("../examples/resources/suzzanne.obj",
-					    &suzzanne_obj_len);
-	cg_assert(suzzanne_obj != NULL);
-
-	struct cg_mesh mesh = cg_mesh_from_obj_data((char*)suzzanne_obj, suzzanne_obj_len);
+	struct cg_mesh mesh = cg_mesh_from_obj_file("./examples/resources/suzzanne.obj");
 
 	struct cg_model model = cg_model_create(mesh);
 

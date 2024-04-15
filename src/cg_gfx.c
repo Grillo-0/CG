@@ -19,6 +19,9 @@
 #define BED_FUNC_PREFIX cg
 #include "external/bed.h"
 
+#define TINYOBJ_LOADER_C_IMPLEMENTATION
+#include "external/tinyobj_loader_c.h"
+
 #include "cg_core.h"
 #include "cg_gfx.h"
 #include "cg_input.h"
@@ -176,96 +179,13 @@ struct cg_mesh cg_mesh_create(const float *verts, const size_t num_verts,
 	return mesh;
 }
 
-struct lex {
-	char *base;
-	char *it;
-	size_t size;
-};
+static void tn_read_file_callback(void *ctx, const char *filename, int is_mtl,
+				  const char *obj_filename, char **buf, size_t *len) {
+	(void) ctx;
+	(void) is_mtl;
+	(void) obj_filename;
 
-static const char *used_chars = "\n/";
-
-static bool is_finished(struct lex *l) {
-	return l->it > l->base + l->size;
-}
-
-static void next_word(struct lex *l, char **word, size_t *len) {
-	while (!is_finished(l) && isblank(*l->it))
-		l->it++;
-
-	*word = l->it;
-
-	if (strchr(used_chars,*l->it) != NULL) {
-		*len = 1;
-		l->it++;
-		return;
-	}
-
-	while (!is_finished(l) && !isblank(*l->it) && strchr(used_chars, *l->it) == NULL)
-		l->it++;
-
-	*len =  l->it - *word;
-}
-
-struct da_float CG_DA(float);
-
-static void parse_coord(struct da_float *coords, struct lex *l) {
-	char *word;
-	size_t len;
-	while (next_word(l, &word, &len), *word != '\n') {
-		char *end = word + len;
-		float num = strtof(word, &end);
-		cg_assert(end != word);
-
-		cg_da_append(coords, num);
-	}
-}
-
-struct index {
-	int v;
-	int vt;
-	int vn;
-};
-struct da_index CG_DA(struct index);
-
-static void parse_indices(struct da_index *indices, struct lex *l) {
-	char *word;
-	size_t len;
-	struct index idx = {-1, -1, -1};
-	size_t slash_count = 0;
-	bool last_was_slash = false;
-	bool first = true;
-	while (next_word(l, &word, &len), *word != '\n') {
-		if (*word == '/') {
-			slash_count++;
-			last_was_slash = true;
-			continue;
-		}
-
-		char *end = word + len;
-		int num = strtol(word, &end, 10);
-		cg_assert(end != word);
-
-		num--;
-
-		if (!first && !last_was_slash) {
-			cg_da_append(indices, idx);
-			idx = (struct index){-1, -1, -1};
-			slash_count = 0;
-		}
-
-		if (slash_count == 0)
-			idx.v = num;
-		else if (slash_count == 1)
-			idx.vt = num;
-		else if (slash_count == 2)
-			idx.vn = num;
-		else
-			cg_assert(0);
-
-		last_was_slash = false;
-		first = false;
-	}
-	cg_da_append(indices, idx);
+	*buf = (char*)cg_ctx.file_read(filename, len);
 }
 
 enum coord {
@@ -274,106 +194,88 @@ enum coord {
 	COORD_Z,
 };
 
-static void find_coord_min_max(const struct da_float da, float *min, float *max, enum coord c) {
-	*min = da.items[c];
+static void find_coord_min_max(const float *vertices, const size_t vert_len, float *min, float *max,
+			       enum coord c) {
+	*min = vertices[c];
 	*max = *min;
-	for (size_t i = c + 3; i < da.len; i += 3) {
-		*min = CG_MIN(da.items[i], *min);
-		*max = CG_MAX(da.items[i], *max);
+	for (size_t i = c + 3; i < vert_len; i += 3) {
+		*min = CG_MIN(vertices[i], *min);
+		*max = CG_MAX(vertices[i], *max);
 	}
 }
 
-struct cg_mesh cg_mesh_from_obj_data(char *data, size_t size) {
-	cg_assert(data != NULL);
+struct cg_mesh cg_mesh_from_obj_file(char *path) {
+	cg_assert(path != NULL);
 
-	struct lex l = {
-		.base = data,
-		.it = data,
-		.size = size,
-	};
-
-	struct da_float verts = { 0 };
-	struct da_float uvs = { 0 };
-	struct da_float norms = { 0 };
-	struct da_index indices = { 0 };
-
-	while (!is_finished(&l)) {
-		char *word;
-		size_t w_len;
-		next_word(&l, &word, &w_len);
-
-		if (w_len == 1 && word[0] == 'v') {
-			parse_coord(&verts, &l);
-		}
-
-		if (w_len == 2 && word[0] == 'v' && word[1] == 't') {
-			parse_coord(&uvs, &l);
-		}
-
-		if (w_len == 2 && word[0] == 'v' && word[1] == 'n') {
-			parse_coord(&norms, &l);
-		}
-
-		if (*word == 'f') {
-			parse_indices(&indices, &l);
-		}
-	}
+	tinyobj_attrib_t tn_attrib = {0};
+	tinyobj_attrib_init(&tn_attrib);
+	tinyobj_shape_t *tn_shapes;
+	size_t tn_num_shapes;
+	tinyobj_material_t *tn_materials;
+	size_t tn_num_materials;
+	int ret = tinyobj_parse_obj(&tn_attrib, &tn_shapes, &tn_num_shapes,
+				    &tn_materials, &tn_num_materials,
+				    path, tn_read_file_callback, NULL,
+				    TINYOBJ_FLAG_TRIANGULATE);
+	cg_assert(ret == TINYOBJ_SUCCESS);
 
 	float x_min, x_max;
-	find_coord_min_max(verts, &x_min, &x_max, COORD_X);
+	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices, &x_min, &x_max, COORD_X);
 	float y_min, y_max;
-	find_coord_min_max(verts, &y_min, &y_max, COORD_Y);
+	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices, &y_min, &y_max, COORD_Y);
 	float z_min, z_max;
-	find_coord_min_max(verts, &z_min, &z_max, COORD_Z);
+	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices, &z_min, &z_max, COORD_Z);
 
 	float x_size = x_max - x_min;
 	float y_size = y_max - y_min;
 	float z_size = z_max - z_min;
 
-	for (size_t i = 0; i < verts.len; i += 3) {
-		float *x = &verts.items[i + 0];
-		float *y = &verts.items[i + 1];
-		float *z = &verts.items[i + 2];
+	for (size_t i = 0; i < tn_attrib.num_vertices * 3; i += 3) {
+		float *x = &tn_attrib.vertices[i + 0];
+		float *y = &tn_attrib.vertices[i + 1];
+		float *z = &tn_attrib.vertices[i + 2];
 
 		*x = (*x - x_size / 2 - x_min) / x_size;
 		*y = (*y - y_size / 2 - y_min) / x_size;
 		*z = (*z - z_size / 2 - z_min) / x_size;
 	}
 
-	float *ex_verts = verts.len == 0 ? NULL : malloc(sizeof(*ex_verts) * indices.len * 3);
-	float *ex_uvs = uvs.len == 0 ? NULL : malloc(sizeof(*ex_uvs) * indices.len * 2);
-	float *ex_norms = norms.len == 0 ? NULL : malloc(sizeof(*ex_uvs) * indices.len * 3);
+	float *ex_verts = tn_attrib.num_vertices == 0 ? NULL : malloc(sizeof(*ex_verts) *
+								      tn_attrib.num_faces * 3);
+	float *ex_uvs = tn_attrib.num_texcoords == 0 ? NULL : malloc(sizeof(*ex_uvs) *
+								     tn_attrib.num_faces * 2);
+	float *ex_norms = tn_attrib.num_normals == 0 ? NULL : malloc(sizeof(*ex_uvs) *
+								     tn_attrib.num_faces * 3);
 
-	for (size_t i = 0; i < indices.len; i++) {
+	for (size_t i = 0; i < tn_attrib.num_faces; i++) {
 		if (ex_verts != NULL) {
-			ex_verts[i * 3 + 0] = verts.items[indices.items[i].v * 3 + 0];
-			ex_verts[i * 3 + 1] = verts.items[indices.items[i].v * 3 + 1];
-			ex_verts[i * 3 + 2] = verts.items[indices.items[i].v * 3 + 2];
+			ex_verts[i * 3 + 0] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 0];
+			ex_verts[i * 3 + 1] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 1];
+			ex_verts[i * 3 + 2] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 2];
 		}
 
 		if (ex_uvs != NULL) {
-			ex_uvs[i * 2 + 0] = uvs.items[indices.items[i].vt * 2 + 0];
-			ex_uvs[i * 2 + 1] = uvs.items[indices.items[i].vt * 2 + 1];
+			ex_uvs[i * 2 + 0] = tn_attrib.texcoords[tn_attrib.faces[i].vt_idx * 2 + 0];
+			ex_uvs[i * 2 + 1] = tn_attrib.texcoords[tn_attrib.faces[i].vt_idx * 2 + 1];
 		}
 
 		if (ex_norms != NULL) {
-			ex_norms[i * 3 + 0] = norms.items[indices.items[i].vn * 3 + 0];
-			ex_norms[i * 3 + 1] = norms.items[indices.items[i].vn * 3 + 1];
-			ex_norms[i * 3 + 2] = norms.items[indices.items[i].vn * 3 + 2];
+			ex_norms[i * 3 + 0] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 0];
+			ex_norms[i * 3 + 1] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 1];
+			ex_norms[i * 3 + 2] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 2];
 		}
 	}
 
-	struct cg_mesh mesh = cg_mesh_create(ex_verts, indices.len,
+	struct cg_mesh mesh = cg_mesh_create(ex_verts, tn_attrib.num_faces,
 					     NULL, 0,
-					     ex_norms, indices.len,
-					     ex_uvs, indices.len);
-	free(verts.items);
-	free(uvs.items);
-	free(norms.items);
+					     ex_norms, tn_attrib.num_faces,
+					     ex_uvs, tn_attrib.num_faces);
 	free(ex_verts);
 	free(ex_uvs);
 	free(ex_norms);
-	free(indices.items);
+	tinyobj_attrib_free(&tn_attrib);
+	tinyobj_shapes_free(tn_shapes, tn_num_shapes);
+	tinyobj_materials_free(tn_materials, tn_num_materials);
 
 	return mesh;
 }
@@ -545,6 +447,7 @@ struct cg_model cg_model_create(struct cg_mesh mesh) {
 		.model_matrix = cg_mat4f_identity(),
 	};
 }
+
 
 void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg) {
 	model->prg = prg;
