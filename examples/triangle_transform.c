@@ -64,7 +64,7 @@ int main(void) {
 	transform = cg_mat4f_multiply(transform, cg_mat4f_scale(0.25, 0.25, 1.0));
 	transform = cg_mat4f_multiply(transform, cg_mat4f_translate(0.5, 0.5, 0.0));
 
-	cg_model_put_model_matrix(&model, &transform);
+	cg_model_put_model_matrix(&model, transform);
 
 	while (!cg_window_should_close()) {
 		cg_start_render();

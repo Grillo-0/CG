@@ -62,7 +62,7 @@ int main(void) {
 			for (int y = 0; y < 10; y++) {
 				for (int x = 0; x < 10; x++) {
 					struct cg_mat4f m = cg_mat4f_translate((x - 5) * 5, (y - 5) * 5, (z - 5) * 3);
-					cg_model_put_model_matrix(&model, &m);
+					cg_model_put_model_matrix(&model, m);
 					cg_model_draw(&model);
 				}
 			}

@@ -514,8 +514,8 @@ void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg) {
 	model->prg = prg;
 }
 
-void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f *model_matrix) {
-	model->model_matrix = *model_matrix;
+void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix) {
+	memcpy(model->model_matrix.d, model_matrix.d, sizeof(model_matrix.d));
 }
 
 void cg_model_put_texture(struct cg_model *model, struct cg_texture texture) {

@@ -82,7 +82,7 @@ int main(void) {
 		transform = cg_mat4f_multiply(transform, cg_mat4f_scale(0.25, 0.25, 1.0));
 		transform = cg_mat4f_multiply(transform, cg_mat4f_translate(x, y, 0.0));
 
-		cg_model_put_model_matrix(&model, &transform);
+		cg_model_put_model_matrix(&model, transform);
 
 		cg_start_render();
 

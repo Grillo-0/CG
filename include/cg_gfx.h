@@ -101,7 +101,7 @@ struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, 
 
 struct cg_model cg_model_create(struct cg_mesh mesh);
 void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg);
-void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f *model_matrix);
+void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix);
 void cg_model_put_texture(struct cg_model *model, struct cg_texture texture);
 void cg_model_draw(struct cg_model *model);
 

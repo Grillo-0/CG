@@ -118,11 +118,11 @@ int main(void) {
 		transform = cg_mat4f_multiply(transform, cg_mat4f_rotate_y(angle_y));
 		transform = cg_mat4f_multiply(transform, cg_mat4f_scale(0.25, 0.25, 0.25));
 
+		cg_model_put_model_matrix(&model, transform);
+
 		cg_start_render();
 
 		glClearColor(0.1, 0.1, 0.1, 1.0);
-
-		cg_model_put_model_matrix(&model, &transform);
 
 		cg_model_draw(&model);
 
