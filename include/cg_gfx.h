@@ -92,7 +92,6 @@ struct cg_mesh cg_mesh_create(const float *verts, const size_t num_verts,
 			      const int *indices, const size_t num_indices,
 			      const float *normals, const size_t num_normals,
 			      const float *uvs, const size_t num_uvs);
-struct cg_mesh cg_mesh_from_obj_file(char *path);
 
 void cg_shader_prg_builder_add_shader(struct cg_shader_prg_builder *builder, const char *src,
 				      int length,
@@ -103,6 +102,7 @@ struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, 
 				       int internal_format, int format);
 
 struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes);
+struct cg_model cg_model_from_obj_file(const char *file_path);
 void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg);
 void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix);
 void cg_model_put_texture(struct cg_model *model, struct cg_texture texture);

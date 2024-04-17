@@ -180,107 +180,6 @@ struct cg_mesh cg_mesh_create(const float *verts, const size_t num_verts,
 	return mesh;
 }
 
-static void tn_read_file_callback(void *ctx, const char *filename, int is_mtl,
-				  const char *obj_filename, char **buf, size_t *len) {
-	(void) ctx;
-	(void) is_mtl;
-	(void) obj_filename;
-
-	*buf = (char*)cg_ctx.file_read(filename, len);
-}
-
-enum coord {
-	COORD_X = 0,
-	COORD_Y,
-	COORD_Z,
-};
-
-static void find_coord_min_max(const float *vertices, const size_t vert_len, float *min, float *max,
-			       enum coord c) {
-	*min = vertices[c];
-	*max = *min;
-	for (size_t i = c + 3; i < vert_len; i += 3) {
-		*min = CG_MIN(vertices[i], *min);
-		*max = CG_MAX(vertices[i], *max);
-	}
-}
-
-struct cg_mesh cg_mesh_from_obj_file(char *path) {
-	cg_assert(path != NULL);
-
-	tinyobj_attrib_t tn_attrib = {0};
-	tinyobj_attrib_init(&tn_attrib);
-	tinyobj_shape_t *tn_shapes;
-	size_t tn_num_shapes;
-	tinyobj_material_t *tn_materials;
-	size_t tn_num_materials;
-	int ret = tinyobj_parse_obj(&tn_attrib, &tn_shapes, &tn_num_shapes,
-				    &tn_materials, &tn_num_materials,
-				    path, tn_read_file_callback, NULL,
-				    TINYOBJ_FLAG_TRIANGULATE);
-	cg_assert(ret == TINYOBJ_SUCCESS);
-
-	float x_min, x_max;
-	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices, &x_min, &x_max, COORD_X);
-	float y_min, y_max;
-	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices, &y_min, &y_max, COORD_Y);
-	float z_min, z_max;
-	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices, &z_min, &z_max, COORD_Z);
-
-	float x_size = x_max - x_min;
-	float y_size = y_max - y_min;
-	float z_size = z_max - z_min;
-
-	for (size_t i = 0; i < tn_attrib.num_vertices * 3; i += 3) {
-		float *x = &tn_attrib.vertices[i + 0];
-		float *y = &tn_attrib.vertices[i + 1];
-		float *z = &tn_attrib.vertices[i + 2];
-
-		*x = (*x - x_size / 2 - x_min) / x_size;
-		*y = (*y - y_size / 2 - y_min) / x_size;
-		*z = (*z - z_size / 2 - z_min) / x_size;
-	}
-
-	float *ex_verts = tn_attrib.num_vertices == 0 ? NULL : malloc(sizeof(*ex_verts) *
-								      tn_attrib.num_faces * 3);
-	float *ex_uvs = tn_attrib.num_texcoords == 0 ? NULL : malloc(sizeof(*ex_uvs) *
-								     tn_attrib.num_faces * 2);
-	float *ex_norms = tn_attrib.num_normals == 0 ? NULL : malloc(sizeof(*ex_uvs) *
-								     tn_attrib.num_faces * 3);
-
-	for (size_t i = 0; i < tn_attrib.num_faces; i++) {
-		if (ex_verts != NULL) {
-			ex_verts[i * 3 + 0] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 0];
-			ex_verts[i * 3 + 1] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 1];
-			ex_verts[i * 3 + 2] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 2];
-		}
-
-		if (ex_uvs != NULL) {
-			ex_uvs[i * 2 + 0] = tn_attrib.texcoords[tn_attrib.faces[i].vt_idx * 2 + 0];
-			ex_uvs[i * 2 + 1] = tn_attrib.texcoords[tn_attrib.faces[i].vt_idx * 2 + 1];
-		}
-
-		if (ex_norms != NULL) {
-			ex_norms[i * 3 + 0] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 0];
-			ex_norms[i * 3 + 1] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 1];
-			ex_norms[i * 3 + 2] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 2];
-		}
-	}
-
-	struct cg_mesh mesh = cg_mesh_create(ex_verts, tn_attrib.num_faces,
-					     NULL, 0,
-					     ex_norms, tn_attrib.num_faces,
-					     ex_uvs, tn_attrib.num_faces);
-	free(ex_verts);
-	free(ex_uvs);
-	free(ex_norms);
-	tinyobj_attrib_free(&tn_attrib);
-	tinyobj_shapes_free(tn_shapes, tn_num_shapes);
-	tinyobj_materials_free(tn_materials, tn_num_materials);
-
-	return mesh;
-}
-
 static unsigned int create_shader(const char *src, int length, GLenum type) {
 	unsigned int shader = glCreateShader(type);
 	cg_assert(shader != 0);
@@ -455,6 +354,122 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes)
 	return ret;
 }
 
+enum coord {
+	COORD_X = 0,
+	COORD_Y,
+	COORD_Z,
+};
+
+static void find_coord_min_max(const float *vertices, const size_t vert_len, float *min, float *max,
+			       enum coord c) {
+	float tmp_min, tmp_max;
+	tmp_min = vertices[c];
+	tmp_max = vertices[c];
+
+	for (size_t i = c + 3; i < vert_len; i += 3) {
+		tmp_min = CG_MIN(vertices[i], tmp_min);
+		tmp_max = CG_MAX(vertices[i], tmp_max);
+	}
+
+	*min = tmp_min;
+	*max = tmp_max;
+}
+
+static void tn_read_file_callback(void *ctx, const char *filename, int is_mtl,
+			          const char *obj_filename, char **buf, size_t *len) {
+	(void) ctx;
+	(void) is_mtl;
+	(void) obj_filename;
+
+	*buf = (char*)cg_ctx.file_read(filename, len);
+}
+
+struct cg_model cg_model_from_obj_file(const char *file_path) {
+	cg_assert(file_path != NULL);
+
+	tinyobj_attrib_t tn_attrib = {0};
+	tinyobj_attrib_init(&tn_attrib);
+	tinyobj_shape_t *tn_shapes;
+	size_t tn_num_shapes;
+	tinyobj_material_t *tn_materials;
+	size_t tn_num_materials;
+	int ret = tinyobj_parse_obj(&tn_attrib, &tn_shapes, &tn_num_shapes,
+				    &tn_materials, &tn_num_materials,
+				    file_path, tn_read_file_callback, NULL,
+				    TINYOBJ_FLAG_TRIANGULATE);
+	cg_assert(ret == TINYOBJ_SUCCESS);
+
+	float x_min, x_max;
+	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices * 3, &x_min, &x_max, COORD_X);
+	float y_min, y_max;
+	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices * 3, &y_min, &y_max, COORD_Y);
+	float z_min, z_max;
+	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices * 3, &z_min, &z_max, COORD_Z);
+
+	float x_size = x_max - x_min;
+	float y_size = y_max - y_min;
+	float z_size = z_max - z_min;
+
+	for (size_t i = 0; i < tn_attrib.num_vertices * 3; i += 3) {
+		float *x = &tn_attrib.vertices[i + 0];
+		float *y = &tn_attrib.vertices[i + 1];
+		float *z = &tn_attrib.vertices[i + 2];
+
+		*x = (*x - x_size / 2 - x_min) / x_size;
+		*y = (*y - y_size / 2 - y_min) / x_size;
+		*z = (*z - z_size / 2 - z_min) / x_size;
+	}
+
+	float *ex_verts = tn_attrib.num_vertices == 0 ? NULL : malloc(sizeof(*ex_verts) *
+								      tn_attrib.num_faces * 3);
+	float *ex_uvs = tn_attrib.num_texcoords == 0 ? NULL : malloc(sizeof(*ex_uvs) *
+								     tn_attrib.num_faces * 2);
+	float *ex_norms = tn_attrib.num_normals == 0 ? NULL : malloc(sizeof(*ex_uvs) *
+								     tn_attrib.num_faces * 3);
+
+	for (size_t i = 0; i < tn_attrib.num_faces; i++) {
+		if (ex_verts != NULL) {
+			ex_verts[i * 3 + 0] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 0];
+			ex_verts[i * 3 + 1] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 1];
+			ex_verts[i * 3 + 2] = tn_attrib.vertices[tn_attrib.faces[i].v_idx * 3 + 2];
+		}
+
+		if (ex_uvs != NULL) {
+			ex_uvs[i * 2 + 0] = tn_attrib.texcoords[tn_attrib.faces[i].vt_idx * 2 + 0];
+			ex_uvs[i * 2 + 1] = tn_attrib.texcoords[tn_attrib.faces[i].vt_idx * 2 + 1];
+		}
+
+		if (ex_norms != NULL) {
+			ex_norms[i * 3 + 0] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 0];
+			ex_norms[i * 3 + 1] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 1];
+			ex_norms[i * 3 + 2] = tn_attrib.normals[tn_attrib.faces[i].vn_idx * 3 + 2];
+		}
+	}
+
+	struct CG_DA(struct cg_mesh) meshes = {0};
+
+	for (size_t i = 0;  i < tn_num_shapes; i++) {
+		size_t num_indices = tn_shapes[i].length * 3;
+		size_t indices_offset = tn_shapes[i].face_offset * 3;
+		struct cg_mesh m = cg_mesh_create(ex_verts + indices_offset * 3, num_indices,
+						  NULL, 0,
+						  ex_norms + indices_offset * 3, num_indices,
+						  ex_uvs + indices_offset * 2, num_indices);
+		cg_da_append(&meshes, m);
+	}
+
+	struct cg_model model = cg_model_create(meshes.items, meshes.len);
+
+	free(meshes.items);
+	free(ex_verts);
+	free(ex_uvs);
+	free(ex_norms);
+	tinyobj_attrib_free(&tn_attrib);
+	tinyobj_shapes_free(tn_shapes, tn_num_shapes);
+	tinyobj_materials_free(tn_materials, tn_num_materials);
+
+	return model;
+}
 
 void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg) {
 	model->prg = prg;

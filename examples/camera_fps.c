@@ -26,9 +26,7 @@ int main(void) {
 
 	cg_disable_cursor();
 
-	struct cg_mesh mesh = cg_mesh_from_obj_file("../examples/resources/suzzanne.obj");
-
-	struct cg_model model = cg_model_create(&mesh, 1);
+	struct cg_model model = cg_model_from_obj_file("../examples/resources/suzzanne.obj");
 
 	size_t suzzanne_tex_len;
 	unsigned char *suzzanne_tex = bed_get("../examples/resources/suzzanne_tex.png",
