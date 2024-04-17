@@ -19,6 +19,6 @@
 #define BED_FUNC(func) func
 #endif // BED_FUNC_PREFIX
 
-unsigned char* BED_FUNC(bed_get)(char *file_name, size_t *size);
+unsigned char* BED_FUNC(bed_get)(const char *file_name, size_t *size);
 
 #endif // __BED_H__

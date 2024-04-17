@@ -22,9 +22,11 @@
 int main(void) {
 	cg_window_create("Camera FPS example", 600 , 400);
 
+	cg_set_file_read_callback(bed_get);
+
 	cg_disable_cursor();
 
-	struct cg_mesh mesh = cg_mesh_from_obj_file("./examples/resources/suzzanne.obj");
+	struct cg_mesh mesh = cg_mesh_from_obj_file("../examples/resources/suzzanne.obj");
 
 	struct cg_model model = cg_model_create(mesh);
 
