@@ -44,30 +44,3 @@ bool cg_check_gl(void) {
 
 	return has_error;
 }
-
-char* cg_file_to_str(const char* path) {
-	int ret = 0;
-
-	FILE *fp = fopen(path, "r");
-	cg_assert(fp != NULL);
-
-	ret = fseek(fp, 0, SEEK_END);
-	cg_assert(ret == 0);
-
-	long len = ftell(fp);
-	cg_assert(len >= 0);
-
-	rewind(fp);
-
-	char *str = calloc(len, sizeof(*str));
-	cg_assert(str != NULL);
-
-	fread(str, 1, len, fp);
-	cg_assert(ferror(fp) == 0);
-
-	ret = fclose(fp);
-	cg_assert(ret == 0);
-
-	return str;
-}
-

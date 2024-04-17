@@ -32,7 +32,6 @@ static inline void __cg_assert(int val, const char* expr_str, const char *file_n
 	}
 }
 
-char* cg_file_to_str(const char* path);
 
 #define CG_MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define CG_MIN(a, b) (((a) < (b)) ? (a) : (b))

@@ -49,6 +49,7 @@ void cg_window_create(const char *window_name, size_t width, size_t height) {
 
 	cg_ctx.view_matrix = cg_mat4f_identity();
 	cg_ctx.projection_matrix = cg_mat4f_identity();
+	cg_reset_file_read_callback();
 }
 
 static enum cg_keycode sdl2_to_cg_kc(SDL_Keycode kc) {
@@ -159,4 +160,36 @@ void cg_enable_cursor(void) {
 
 void cg_disable_cursor(void) {
 	cg_assert(!SDL_SetRelativeMouseMode(true));
+}
+
+void cg_set_file_read_callback(cg_file_reader_callback_t func) {
+	cg_ctx.file_read = func;
+}
+
+static unsigned char* default_file_read_callback(const char *file_path, size_t *file_size) {
+	FILE *fp = fopen(file_path, "r");
+	cg_assert(fp != NULL);
+
+	int ret = fseek(fp, 0, SEEK_END);
+	cg_assert(ret == 0);
+	int size = ftell(fp);
+	cg_assert(size != -1);
+	ret = fseek(fp, 0, SEEK_SET);
+	cg_assert(ret == 0);
+
+	unsigned char *buf = malloc(sizeof(*buf) * size);
+	cg_assert(buf != NULL);
+
+	fread(buf, sizeof(*buf) * size, 1, fp);
+	cg_assert(ferror(fp) == 0);
+
+	ret = fclose(fp);
+	cg_assert(ret == 0);
+
+	*file_size = size;
+	return buf;
+}
+
+void cg_reset_file_read_callback() {
+		cg_ctx.file_read = default_file_read_callback;
 }
