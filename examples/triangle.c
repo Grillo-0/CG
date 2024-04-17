@@ -41,7 +41,7 @@ int main(void) {
 					     NULL, 0,
 					     NULL, 0,
 					     NULL, 0);
-	struct cg_model model = cg_model_create(mesh);
+	struct cg_model model = cg_model_create(&mesh, 1);
 
 	struct cg_shader_prg_builder builder = {0};
 

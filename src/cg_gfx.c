@@ -10,6 +10,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 #include <SDL2/SDL.h>
@@ -393,7 +394,7 @@ struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, 
 	return tex;
 }
 
-struct cg_model cg_model_create(struct cg_mesh mesh) {
+struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes) {
 	static struct cg_shader_prg default_shader_prg = {0};
 	static struct cg_texture default_tex = {0};
 
@@ -440,12 +441,18 @@ struct cg_model cg_model_create(struct cg_mesh mesh) {
 		cg_assert(!cg_check_gl());
 	}
 
-	return (struct cg_model) {
-		.mesh = mesh,
+	struct cg_model ret = {
+		.num_meshes = num_meshes,
 		.prg = default_shader_prg,
 		.texture = default_tex,
 		.model_matrix = cg_mat4f_identity(),
 	};
+
+	ret.meshes = malloc(num_meshes * sizeof(*ret.meshes));
+	cg_assert(ret.meshes != NULL);
+	memcpy(ret.meshes, meshes, num_meshes * sizeof(*ret.meshes));
+
+	return ret;
 }
 
 
@@ -484,15 +491,18 @@ void cg_model_draw(struct cg_model *model) {
 		cg_assert(!cg_check_gl());
 	}
 
-	glBindVertexArray(model->mesh.vao);
-	cg_assert(!cg_check_gl());
+	for (size_t i = 0; i < model->num_meshes; i++) {
+		struct cg_mesh *mesh = &model->meshes[i];
+		glBindVertexArray(mesh->vao);
+		cg_assert(!cg_check_gl());
 
-	if (model->mesh.indices == NULL)
-		glDrawArrays(GL_TRIANGLES, 0, model->mesh.num_verts);
-	else
-		glDrawElements(GL_TRIANGLES, model->mesh.num_indices, GL_UNSIGNED_INT, 0);
+		if (mesh->indices == NULL)
+			glDrawArrays(GL_TRIANGLES, 0, mesh->num_verts);
+		else
+			glDrawElements(GL_TRIANGLES, mesh->num_indices, GL_UNSIGNED_INT, 0);
 
-	cg_assert(!cg_check_gl());
+		cg_assert(!cg_check_gl());
+	}
 }
 
 struct cg_camera cg_camera_create(const struct cg_vec3f pos,

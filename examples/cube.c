@@ -106,7 +106,7 @@ int main(void) {
 
 	struct cg_shader_prg shader_prog = cg_shader_prg_builder_build(&builder);
 
-	struct cg_model model = cg_model_create(mesh);
+	struct cg_model model = cg_model_create(&mesh, 1);
 	cg_model_put_shader_prg(&model, shader_prog);
 
 	while (!cg_window_should_close()) {
