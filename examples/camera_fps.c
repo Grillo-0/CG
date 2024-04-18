@@ -25,9 +25,6 @@ int main(void) {
 
 	struct cg_model model = cg_model_from_obj_file("../examples/resources/suzzanne.obj");
 
-	struct cg_texture tex = cg_texture_from_file_2d("../examples/resources/suzzanne_tex.png");
-	model.materials[0].tex_diffuse = tex;
-
 	struct cg_camera camera = cg_camera_create((struct cg_vec3f){0, 0, -1}, 1.5, 0.1, 100);
 
 	while (!cg_window_should_close()) {

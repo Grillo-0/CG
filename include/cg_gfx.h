@@ -122,10 +122,12 @@ void cg_shader_prg_builder_add_shader(struct cg_shader_prg_builder *builder, con
 				      int length,
 				      GLenum type);
 struct cg_shader_prg cg_shader_prg_builder_build(struct cg_shader_prg_builder *builder);
+struct cg_shader_prg cg_shader_prg_default();
 
 struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, size_t height,
 				       int internal_format, int format);
 struct cg_texture cg_texture_from_file_2d(const char *file_path);
+struct cg_texture cg_texture_default();
 
 struct cg_material cg_material_default();
 

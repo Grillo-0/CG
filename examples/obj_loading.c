@@ -22,9 +22,6 @@ int main(void) {
 
 	struct cg_model model = cg_model_from_obj_file("../examples/resources/suzzanne.obj");
 
-	struct cg_texture tex = cg_texture_from_file_2d("../examples/resources/suzzanne_tex.png");
-	model.materials[0].tex_diffuse = tex;
-
 	while (!cg_window_should_close()) {
 		cg_start_render();
 

@@ -269,6 +269,38 @@ struct cg_shader_prg cg_shader_prg_builder_build(struct cg_shader_prg_builder *b
 	return prg;
 }
 
+struct cg_shader_prg cg_shader_prg_default() {
+	static struct cg_shader_prg default_shader_prg = {0};
+
+	if (default_shader_prg.id == 0) {
+		struct cg_shader_prg_builder builder = {0};
+
+		size_t vert_shader_len;
+		const char *vert_shader_src = (char*)cg_bed_get("../resources/shaders/vert.glsl",
+								   &vert_shader_len);
+		cg_assert(vert_shader_src != NULL);
+
+		cg_shader_prg_builder_add_shader(&builder,
+						 vert_shader_src,
+						 vert_shader_len,
+						 GL_VERTEX_SHADER);
+
+		size_t frag_shader_len;
+		const char *frag_shader_src = (char*)cg_bed_get("../resources/shaders/frag.glsl",
+								&frag_shader_len);
+		cg_assert(frag_shader_src != NULL);
+
+		cg_shader_prg_builder_add_shader(&builder,
+						 frag_shader_src,
+						 frag_shader_len,
+						 GL_FRAGMENT_SHADER);
+
+		default_shader_prg = cg_shader_prg_builder_build(&builder);
+	}
+
+	return default_shader_prg;
+}
+
 struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, size_t height,
 				       int internal_format, int format) {
 	struct cg_texture tex = { .type = CG_TEXTURE_2D };
@@ -299,8 +331,12 @@ struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, 
 }
 
 struct cg_texture cg_texture_from_file_2d(const char *file_path) {
+	cg_info("Loading file %s\n", file_path);
 	size_t file_size;
 	unsigned char *file = cg_ctx.file_read(file_path, &file_size);
+	if (file == NULL) {
+		cg_error("File %s nor found\n", file_path);
+	}
 	cg_assert(file != NULL);
 
 	int width, height, channels;
@@ -339,35 +375,8 @@ struct cg_texture cg_texture_from_file_2d(const char *file_path) {
 	return tex;
 }
 
-struct cg_material cg_material_default() {
-	static struct cg_shader_prg default_shader_prg = {0};
+struct cg_texture cg_texture_default() {
 	static struct cg_texture default_tex = {0};
-
-	if (default_shader_prg.id == 0) {
-		struct cg_shader_prg_builder builder = {0};
-
-		size_t vert_shader_len;
-		const char *vert_shader_src = (char*)cg_bed_get("../resources/shaders/vert.glsl",
-								   &vert_shader_len);
-		cg_assert(vert_shader_src != NULL);
-
-		cg_shader_prg_builder_add_shader(&builder,
-						 vert_shader_src,
-						 vert_shader_len,
-						 GL_VERTEX_SHADER);
-
-		size_t frag_shader_len;
-		const char *frag_shader_src = (char*)cg_bed_get("../resources/shaders/frag.glsl",
-								&frag_shader_len);
-		cg_assert(frag_shader_src != NULL);
-
-		cg_shader_prg_builder_add_shader(&builder,
-						 frag_shader_src,
-						 frag_shader_len,
-						 GL_FRAGMENT_SHADER);
-
-		default_shader_prg = cg_shader_prg_builder_build(&builder);
-	}
 
 	if (default_tex.gl_tex == 0) {
 		unsigned char default_tex_data[DEFAULT_TEX_SIZE * 4 * DEFAULT_TEX_SIZE] = {0};
@@ -392,10 +401,14 @@ struct cg_material cg_material_default() {
 		cg_assert(!cg_check_gl());
 	}
 
+	return default_tex;
+}
+
+struct cg_material cg_material_default() {
 	struct cg_material ret = {
-		.shader = default_shader_prg,
+		.shader = cg_shader_prg_default(),
 		.enable_color = true,
-		.tex_diffuse = default_tex,
+		.tex_diffuse = cg_texture_default(),
 	};
 
 	return ret;
@@ -528,6 +541,14 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 
 	struct CG_DA(struct cg_mesh) meshes = {0};
 
+	size_t *mesh_to_material = calloc(tn_num_shapes, sizeof(*mesh_to_material));
+
+	for (size_t i = 0;  i < tn_num_shapes; i++) {
+		mesh_to_material[i] = i;
+	}
+
+	bool add_default_material = false;
+
 	for (size_t i = 0;  i < tn_num_shapes; i++) {
 		size_t num_indices = tn_shapes[i].length * 3;
 		size_t indices_offset = tn_shapes[i].face_offset * 3;
@@ -536,10 +557,64 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 						  ex_norms + indices_offset * 3, num_indices,
 						  ex_uvs + indices_offset * 2, num_indices);
 		cg_da_append(&meshes, m);
+
+		int mesh_to_mat = tn_attrib.material_ids[tn_shapes[i].face_offset];
+		if (mesh_to_mat == -1) {
+			add_default_material = true;
+			mesh_to_mat = tn_num_materials;
+		}
+
+		mesh_to_material[i] = mesh_to_mat;
 	}
 
-	struct cg_model model = cg_model_create(meshes.items, meshes.len, NULL, 0, NULL);
+	struct CG_DA(struct cg_material) materials = {0};
 
+	for (size_t i = 0;  i < tn_num_materials; i++) {
+		struct cg_material m = {0};
+
+		m.shader = cg_shader_prg_default();
+
+		m.color_ambient = cg_vec3f_from_array(tn_materials[i].ambient);
+		m.color_diffuse = cg_vec3f_from_array(tn_materials[i].diffuse);
+		m.color_specular = cg_vec3f_from_array(tn_materials[i].specular);
+		m.color_transmittance = cg_vec3f_from_array(tn_materials[i].transmittance);
+		m.color_emission = cg_vec3f_from_array(tn_materials[i].emission);
+
+		m.specular_exponent = tn_materials[i].shininess;
+		m.index_of_refraction = tn_materials[i].ior;
+		m.opacity = tn_materials[i].dissolve;
+
+		m.enable_color = true;
+
+		if (tn_materials[i].ambient_texname)
+			m.tex_ambient = cg_texture_from_file_2d(tn_materials[i].ambient_texname);
+		if (tn_materials[i].diffuse_texname)
+			m.tex_diffuse = cg_texture_from_file_2d(tn_materials[i].diffuse_texname);
+		if (tn_materials[i].specular_texname)
+			m.tex_specular = cg_texture_from_file_2d(tn_materials[i].specular_texname);
+		if (tn_materials[i].specular_highlight_texname)
+			m.tex_specular_highlight =
+				cg_texture_from_file_2d(tn_materials[i].specular_highlight_texname);
+		if (tn_materials[i].bump_texname)
+			m.tex_bump = cg_texture_from_file_2d(tn_materials[i].bump_texname);
+		if (tn_materials[i].displacement_texname)
+			m.tex_displacement =
+				cg_texture_from_file_2d(tn_materials[i].displacement_texname);
+		if (tn_materials[i].alpha_texname)
+			m.tex_alpha = cg_texture_from_file_2d(tn_materials[i].alpha_texname);
+
+		cg_da_append(&materials, m);
+	}
+
+	if (add_default_material) {
+		cg_da_append(&materials, cg_material_default());
+	}
+
+	struct cg_model model = cg_model_create(meshes.items, meshes.len,
+						materials.items, materials.len, mesh_to_material);
+
+	free(materials.items);
+	free(mesh_to_material);
 	free(meshes.items);
 	free(ex_verts);
 	free(ex_uvs);
