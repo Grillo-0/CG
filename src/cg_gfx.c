@@ -450,25 +450,25 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_m
 	return ret;
 }
 
-enum coord {
-	COORD_X = 0,
-	COORD_Y,
-	COORD_Z,
-};
+static void find_coord_min_max(const float *vertices, const size_t vert_len,
+			       float *x_min, float *x_max,
+			       float *y_min, float *y_max,
+			       float *z_min, float *z_max) {
+	*x_min = vertices[0];
+	*x_max = vertices[0];
+	*y_min = vertices[1];
+	*y_max = vertices[1];
+	*z_min = vertices[2];
+	*z_max = vertices[2];
 
-static void find_coord_min_max(const float *vertices, const size_t vert_len, float *min, float *max,
-			       enum coord c) {
-	float tmp_min, tmp_max;
-	tmp_min = vertices[c];
-	tmp_max = vertices[c];
-
-	for (size_t i = c + 3; i < vert_len; i += 3) {
-		tmp_min = CG_MIN(vertices[i], tmp_min);
-		tmp_max = CG_MAX(vertices[i], tmp_max);
+	for (size_t i = 3; i < vert_len * 3; i += 3) {
+		*x_min = CG_MIN(vertices[i + 0], *x_min);
+		*x_max = CG_MAX(vertices[i + 0], *x_max);
+		*y_min = CG_MIN(vertices[i + 1], *y_min);
+		*y_max = CG_MAX(vertices[i + 1], *y_max);
+		*z_min = CG_MIN(vertices[i + 2], *z_min);
+		*z_max = CG_MAX(vertices[i + 2], *z_max);
 	}
-
-	*min = tmp_min;
-	*max = tmp_max;
 }
 
 static void tn_read_file_callback(void *ctx, const char *filename, int is_mtl,
@@ -530,11 +530,12 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 	cg_assert(ret == TINYOBJ_SUCCESS);
 
 	float x_min, x_max;
-	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices * 3, &x_min, &x_max, COORD_X);
 	float y_min, y_max;
-	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices * 3, &y_min, &y_max, COORD_Y);
 	float z_min, z_max;
-	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices * 3, &z_min, &z_max, COORD_Z);
+	find_coord_min_max(tn_attrib.vertices, tn_attrib.num_vertices,
+			   &x_min, &x_max,
+			   &y_min, &y_max,
+			   &z_min, &z_max);
 
 	float x_size = x_max - x_min;
 	float y_size = y_max - y_min;
