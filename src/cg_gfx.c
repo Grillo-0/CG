@@ -416,6 +416,27 @@ struct cg_material cg_material_default() {
 
 	return ret;
 }
+static void find_coord_min_max(const float *vertices, const size_t vert_len,
+			       float *x_min, float *x_max,
+			       float *y_min, float *y_max,
+			       float *z_min, float *z_max) {
+	*x_min = vertices[0];
+	*x_max = vertices[0];
+	*y_min = vertices[1];
+	*y_max = vertices[1];
+	*z_min = vertices[2];
+	*z_max = vertices[2];
+
+	for (size_t i = 3; i < vert_len * 3; i += 3) {
+		*x_min = CG_MIN(vertices[i + 0], *x_min);
+		*x_max = CG_MAX(vertices[i + 0], *x_max);
+		*y_min = CG_MIN(vertices[i + 1], *y_min);
+		*y_max = CG_MAX(vertices[i + 1], *y_max);
+		*z_min = CG_MIN(vertices[i + 2], *z_min);
+		*z_max = CG_MAX(vertices[i + 2], *z_max);
+	}
+}
+
 
 struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_meshes,
 				const struct cg_material *materials, const size_t num_materials,
@@ -447,28 +468,26 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_m
 	cg_assert(ret.mesh_to_material != NULL);
 	memcpy(ret.mesh_to_material, mesh_to_material, ret.num_meshes * sizeof(*ret.mesh_to_material));
 
-	return ret;
-}
-
-static void find_coord_min_max(const float *vertices, const size_t vert_len,
-			       float *x_min, float *x_max,
-			       float *y_min, float *y_max,
-			       float *z_min, float *z_max) {
-	*x_min = vertices[0];
-	*x_max = vertices[0];
-	*y_min = vertices[1];
-	*y_max = vertices[1];
-	*z_min = vertices[2];
-	*z_max = vertices[2];
-
-	for (size_t i = 3; i < vert_len * 3; i += 3) {
-		*x_min = CG_MIN(vertices[i + 0], *x_min);
-		*x_max = CG_MAX(vertices[i + 0], *x_max);
-		*y_min = CG_MIN(vertices[i + 1], *y_min);
-		*y_max = CG_MAX(vertices[i + 1], *y_max);
-		*z_min = CG_MIN(vertices[i + 2], *z_min);
-		*z_max = CG_MAX(vertices[i + 2], *z_max);
+	struct cg_box bounding_box = {0};
+	for (size_t i = 0; i < ret.num_meshes; i++) {
+		float x_min, x_max;
+		float y_min, y_max;
+		float z_min, z_max;
+		find_coord_min_max(ret.meshes[i].verts, ret.meshes[i].num_verts,
+				   &x_min, &x_max,
+				   &y_min, &x_max,
+				   &z_min, &z_max);
+		bounding_box.min.x = CG_MIN(bounding_box.min.x, x_min);
+		bounding_box.max.x = CG_MAX(bounding_box.max.x, x_max);
+		bounding_box.min.y = CG_MIN(bounding_box.min.y, y_min);
+		bounding_box.max.y = CG_MAX(bounding_box.max.y, y_max);
+		bounding_box.min.z = CG_MIN(bounding_box.min.z, z_min);
+		bounding_box.max.z = CG_MAX(bounding_box.max.z, z_max);
 	}
+
+	ret.bounding_box = bounding_box;
+
+	return ret;
 }
 
 static void tn_read_file_callback(void *ctx, const char *filename, int is_mtl,
@@ -670,6 +689,15 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 
 void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix) {
 	memcpy(model->model_matrix.d, model_matrix.d, sizeof(model_matrix.d));
+}
+
+struct cg_box cg_model_get_bounding_box(struct cg_model *model) {
+	struct cg_box ret = {0};
+
+	ret.min = cg_vec3f_mat4f_multiply(model->bounding_box.min, model->model_matrix);
+	ret.max = cg_vec3f_mat4f_multiply(model->bounding_box.max, model->model_matrix);
+
+	return ret;
 }
 
 void cg_model_draw(struct cg_model *model) {

@@ -91,6 +91,10 @@ struct cg_material {
 	struct cg_texture tex_alpha;
 };
 
+struct cg_box {
+	struct cg_vec3f min, max;
+};
+
 struct cg_model {
 	size_t num_meshes;
 	struct cg_mesh *meshes;
@@ -101,6 +105,8 @@ struct cg_model {
 	size_t *mesh_to_material;
 
 	struct cg_mat4f model_matrix;
+
+	struct cg_box bounding_box;
 };
 
 struct cg_camera {
@@ -138,6 +144,7 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_m
 				const size_t *mesh_to_material);
 struct cg_model cg_model_from_obj_file(const char *file_path);
 void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix);
+struct cg_box cg_model_get_bounding_box(struct cg_model *model);
 void cg_model_draw(struct cg_model *model);
 
 struct cg_camera cg_camera_create(const struct cg_vec3f pos,
