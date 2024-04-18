@@ -28,6 +28,14 @@ struct cg_vec3f cg_vec3f_sub(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_cross(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_normalize(const struct cg_vec3f a);
 
+inline struct cg_vec3f cg_vec3f_from_array(const float *array) {
+	return (struct cg_vec3f) {
+		.x = array[0],
+		.y = array[1],
+		.z = array[2],
+	};
+}
+
 void cg_mat4f_print(const struct cg_mat4f *m);
 struct cg_mat4f cg_mat4f_identity(void);
 struct cg_mat4f cg_mat4f_scale(float x_factor, float y_factor, float z_factor);
