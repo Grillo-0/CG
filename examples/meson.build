@@ -1,4 +1,5 @@
 resources_files = files([
+  'resources/suzzanne.mtl',
   'resources/suzzanne.obj',
   'resources/suzzanne_tex.png',
 ])
