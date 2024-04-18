@@ -37,7 +37,8 @@ int main(void) {
 	cg_assert(channels == 4);
 
 	struct cg_texture tex = cg_texture_create_2d(data, width, height, GL_RGBA, GL_RGB);
-	cg_model_put_texture(&model, tex);
+
+	model.materials[0].tex_diffuse = tex;
 
 	stbi_image_free(data);
 

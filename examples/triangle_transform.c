@@ -56,8 +56,12 @@ int main(void) {
 
 	struct cg_shader_prg shader_prog = cg_shader_prg_builder_build(&builder);
 
-	struct cg_model model = cg_model_create(&mesh, 1);
-	cg_model_put_shader_prg(&model, shader_prog);
+	struct cg_material material = {
+		.shader = shader_prog,
+		.enable_color = true,
+	};
+
+	struct cg_model model = cg_model_create(&mesh, 1, &material, 1, (const size_t[]){0});
 
 	struct cg_mat4f transform = cg_mat4f_identity();
 	transform = cg_mat4f_multiply(transform, cg_mat4f_rotate_z(PI/4));

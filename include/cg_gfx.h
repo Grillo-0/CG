@@ -66,14 +66,39 @@ struct cg_texture {
 	unsigned int gl_tex;
 };
 
-struct cg_model {
-	struct cg_shader_prg prg;
+struct cg_material {
+	struct cg_shader_prg shader;
 
+	struct cg_vec3f color_ambient;
+	struct cg_vec3f color_diffuse;
+	struct cg_vec3f color_specular;
+	struct cg_vec3f color_transmittance;
+	struct cg_vec3f color_emission;
+	float specular_exponent;
+	float index_of_refraction;
+	float opacity;
+
+	bool enable_color;
+
+	struct cg_texture tex_ambient;
+	struct cg_texture tex_diffuse;
+	struct cg_texture tex_specular;
+	struct cg_texture tex_specular_highlight;
+	struct cg_texture tex_bump;
+	struct cg_texture tex_displacement;
+	struct cg_texture tex_alpha;
+};
+
+struct cg_model {
 	size_t num_meshes;
 	struct cg_mesh *meshes;
 
+	size_t num_materials;
+	struct cg_material *materials;
+
+	size_t *mesh_to_material;
+
 	struct cg_mat4f model_matrix;
-	struct cg_texture texture;
 };
 
 struct cg_camera {
@@ -101,11 +126,13 @@ struct cg_shader_prg cg_shader_prg_builder_build(struct cg_shader_prg_builder *b
 struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, size_t height,
 				       int internal_format, int format);
 
-struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes);
+struct cg_material cg_material_default();
+
+struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_meshes,
+				const struct cg_material *materials, const size_t num_materials,
+				const size_t *mesh_to_material);
 struct cg_model cg_model_from_obj_file(const char *file_path);
-void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg);
 void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix);
-void cg_model_put_texture(struct cg_model *model, struct cg_texture texture);
 void cg_model_draw(struct cg_model *model);
 
 struct cg_camera cg_camera_create(const struct cg_vec3f pos,

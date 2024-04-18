@@ -295,7 +295,7 @@ struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, 
 	return tex;
 }
 
-struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes) {
+struct cg_material cg_material_default() {
 	static struct cg_shader_prg default_shader_prg = {0};
 	static struct cg_texture default_tex = {0};
 
@@ -326,7 +326,6 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes)
 	}
 
 	if (default_tex.gl_tex == 0) {
-
 		unsigned char default_tex_data[DEFAULT_TEX_SIZE * 4 * DEFAULT_TEX_SIZE] = {0};
 
 		for (size_t y = 0; y < DEFAULT_TEX_SIZE; y++) {
@@ -349,16 +348,44 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes)
 		cg_assert(!cg_check_gl());
 	}
 
+	struct cg_material ret = {
+		.shader = default_shader_prg,
+		.enable_color = true,
+		.tex_diffuse = default_tex,
+	};
+
+	return ret;
+}
+
+struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_meshes,
+				const struct cg_material *materials, const size_t num_materials,
+				const size_t *mesh_to_material) {
+	struct cg_material default_material = cg_material_default();
+	size_t default_mesh_to_material[] = {0};
+
 	struct cg_model ret = {
 		.num_meshes = num_meshes,
-		.prg = default_shader_prg,
-		.texture = default_tex,
+		.num_materials = num_materials,
 		.model_matrix = cg_mat4f_identity(),
 	};
 
-	ret.meshes = malloc(num_meshes * sizeof(*ret.meshes));
+	if (materials == NULL) {
+		ret.num_materials = 1;
+		materials = &default_material;
+		mesh_to_material = default_mesh_to_material;
+	}
+
+	ret.meshes = malloc(ret.num_meshes * sizeof(*ret.meshes));
 	cg_assert(ret.meshes != NULL);
-	memcpy(ret.meshes, meshes, num_meshes * sizeof(*ret.meshes));
+	memcpy(ret.meshes, meshes, ret.num_meshes * sizeof(*ret.meshes));
+
+	ret.materials = malloc(ret.num_materials * sizeof(*ret.materials));
+	cg_assert(ret.materials != NULL);
+	memcpy(ret.materials, materials, ret.num_materials * sizeof(*ret.materials));
+
+	ret.mesh_to_material = malloc(ret.num_meshes * sizeof(*ret.mesh_to_material));
+	cg_assert(ret.mesh_to_material != NULL);
+	memcpy(ret.mesh_to_material, mesh_to_material, ret.num_meshes * sizeof(*ret.mesh_to_material));
 
 	return ret;
 }
@@ -467,7 +494,7 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 		cg_da_append(&meshes, m);
 	}
 
-	struct cg_model model = cg_model_create(meshes.items, meshes.len);
+	struct cg_model model = cg_model_create(meshes.items, meshes.len, NULL, 0, NULL);
 
 	free(meshes.items);
 	free(ex_verts);
@@ -480,42 +507,36 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 	return model;
 }
 
-void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg) {
-	model->prg = prg;
-}
-
 void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix) {
 	memcpy(model->model_matrix.d, model_matrix.d, sizeof(model_matrix.d));
 }
 
-void cg_model_put_texture(struct cg_model *model, struct cg_texture texture) {
-	model->texture = texture;
-}
-
 void cg_model_draw(struct cg_model *model) {
-	glUseProgram(model->prg.id);
-	cg_assert(!cg_check_gl());
-
-	glUniformMatrix4fv(model->prg.uniform_locs[CG_SUNIFORM_MATRIX_MODEL],
-			   1, false, model->model_matrix.d);
-	cg_assert(!cg_check_gl());
-
-	glUniformMatrix4fv(model->prg.uniform_locs[CG_SUNIFORM_MATRIX_VIEW],
-			   1, false, cg_ctx.view_matrix.d);
-	cg_assert(!cg_check_gl());
-
-	glUniformMatrix4fv(model->prg.uniform_locs[CG_SUNIFORM_MATRIX_PROJECTION],
-			   1, false, cg_ctx.projection_matrix.d);
-	cg_assert(!cg_check_gl());
-
-	if (model->texture.gl_tex != 0) {
-		glActiveTexture(GL_TEXTURE0);
-		cg_assert(!cg_check_gl());
-		glBindTexture(GL_TEXTURE_2D, model->texture.gl_tex);
-		cg_assert(!cg_check_gl());
-	}
-
 	for (size_t i = 0; i < model->num_meshes; i++) {
+		struct cg_material *material = &model->materials[model->mesh_to_material[i]];
+
+		glUseProgram(material->shader.id);
+		cg_assert(!cg_check_gl());
+
+		glUniformMatrix4fv(material->shader.uniform_locs[CG_SUNIFORM_MATRIX_MODEL],
+				1, false, model->model_matrix.d);
+		cg_assert(!cg_check_gl());
+
+		glUniformMatrix4fv(material->shader.uniform_locs[CG_SUNIFORM_MATRIX_VIEW],
+				1, false, cg_ctx.view_matrix.d);
+		cg_assert(!cg_check_gl());
+
+		glUniformMatrix4fv(material->shader.uniform_locs[CG_SUNIFORM_MATRIX_PROJECTION],
+				1, false, cg_ctx.projection_matrix.d);
+		cg_assert(!cg_check_gl());
+
+		if (material->tex_diffuse.gl_tex != 0) {
+			glActiveTexture(GL_TEXTURE0);
+			cg_assert(!cg_check_gl());
+			glBindTexture(GL_TEXTURE_2D, material->tex_diffuse.gl_tex);
+			cg_assert(!cg_check_gl());
+		}
+
 		struct cg_mesh *mesh = &model->meshes[i];
 		glBindVertexArray(mesh->vao);
 		cg_assert(!cg_check_gl());
