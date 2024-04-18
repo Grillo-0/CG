@@ -23,6 +23,9 @@
 #define TINYOBJ_LOADER_C_IMPLEMENTATION
 #include "external/tinyobj_loader_c.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "external/stb_image.h"
+
 #include "cg_core.h"
 #include "cg_gfx.h"
 #include "cg_input.h"
@@ -291,6 +294,47 @@ struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, 
 	cg_assert(!cg_check_gl());
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	cg_assert(!cg_check_gl());
+
+	return tex;
+}
+
+struct cg_texture cg_texture_from_file_2d(const char *file_path) {
+	size_t file_size;
+	unsigned char *file = cg_ctx.file_read(file_path, &file_size);
+	cg_assert(file != NULL);
+
+	int width, height, channels;
+	unsigned char *data = stbi_load_from_memory(file, file_size, &width, &height, &channels, 0);
+	cg_assert(data != NULL);
+
+	int internal_format = -1;
+	int format = -1;
+
+	switch (channels) {
+		case 1:
+			internal_format = GL_RED;
+			format = GL_RED;
+			break;
+		case 2:
+			internal_format = GL_RG;
+			format = GL_RG;
+			break;
+		case 3:
+			internal_format = GL_RGB;
+			format = GL_RGB;
+			break;
+		case 4:
+			internal_format = GL_RGBA;
+			format = GL_RGBA;
+			break;
+	}
+
+	cg_assert(internal_format != -1);
+	cg_assert(format != -1);
+
+	struct cg_texture tex = cg_texture_create_2d(data, width, height, internal_format, format);
+
+	stbi_image_free(data);
 
 	return tex;
 }

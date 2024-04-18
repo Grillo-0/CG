@@ -125,6 +125,7 @@ struct cg_shader_prg cg_shader_prg_builder_build(struct cg_shader_prg_builder *b
 
 struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, size_t height,
 				       int internal_format, int format);
+struct cg_texture cg_texture_from_file_2d(const char *file_path);
 
 struct cg_material cg_material_default();
 

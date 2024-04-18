@@ -16,9 +16,6 @@
 
 #include "external/bed.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "external/stb_image.h"
-
 int main(void) {
 	cg_window_create("Camera FPS example", 600 , 400);
 
@@ -28,22 +25,8 @@ int main(void) {
 
 	struct cg_model model = cg_model_from_obj_file("../examples/resources/suzzanne.obj");
 
-	size_t suzzanne_tex_len;
-	unsigned char *suzzanne_tex = bed_get("../examples/resources/suzzanne_tex.png",
-					      &suzzanne_tex_len);
-	cg_assert(suzzanne_tex != NULL);
-
-	int width, height, channels;
-	unsigned char *data = stbi_load_from_memory(suzzanne_tex, suzzanne_tex_len,
-						    &width, &height, &channels, 3);
-	cg_assert(data != NULL);
-	cg_assert(channels == 4);
-
-	struct cg_texture tex = cg_texture_create_2d(data, width, height, GL_RGBA, GL_RGB);
-
+	struct cg_texture tex = cg_texture_from_file_2d("../examples/resources/suzzanne_tex.png");
 	model.materials[0].tex_diffuse = tex;
-
-	stbi_image_free(data);
 
 	struct cg_camera camera = cg_camera_create((struct cg_vec3f){0, 0, -1}, 1.5, 0.1, 100);
 
