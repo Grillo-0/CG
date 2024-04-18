@@ -29,6 +29,8 @@
 #include "cg_math.h"
 #include "cg_util.h"
 
+#define DEFAULT_TEX_SIZE 32
+
 extern struct cg_contex cg_ctx;
 
 static const char* shader_attrib_names[] = {
@@ -324,15 +326,22 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, size_t num_meshes)
 	}
 
 	if (default_tex.gl_tex == 0) {
-		const unsigned char default_tex_data[] ={
-			0xff, 0x00, 0xff,
-			0x00, 0x00, 0x00,
-			0xff, 0x00, 0xff,
-			0x00, 0x00, 0x00,
-		};
 
-		default_tex = cg_texture_create_2d(default_tex_data, 4, 1,
-						   GL_RGB, GL_RGB);
+		unsigned char default_tex_data[DEFAULT_TEX_SIZE * 4 * DEFAULT_TEX_SIZE] = {0};
+
+		for (size_t y = 0; y < DEFAULT_TEX_SIZE; y++) {
+			for (size_t x = 0; x < DEFAULT_TEX_SIZE; x++) {
+				if ((x + y % 2) % 2 == 0) {
+					default_tex_data[(x + y * DEFAULT_TEX_SIZE) * 4 + 0] = 0xff;
+					default_tex_data[(x + y * DEFAULT_TEX_SIZE) * 4 + 1] = 0x00;
+					default_tex_data[(x + y * DEFAULT_TEX_SIZE) * 4 + 2] = 0xff;
+				}
+			}
+		}
+
+		default_tex = cg_texture_create_2d(default_tex_data,
+						   DEFAULT_TEX_SIZE, DEFAULT_TEX_SIZE,
+						   GL_RGBA, GL_RGBA);
 		glBindTexture(GL_TEXTURE_2D, default_tex.gl_tex);
 		cg_assert(!cg_check_gl());
 		cg_assert(!cg_check_gl());
