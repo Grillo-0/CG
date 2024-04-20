@@ -46,6 +46,8 @@ void cg_window_create(const char *window_name, size_t width, size_t height) {
 	cg_info("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	glEnable(GL_DEPTH_TEST);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND );
 
 	cg_ctx.view_matrix = cg_mat4f_identity();
 	cg_ctx.projection_matrix = cg_mat4f_identity();
