@@ -8,6 +8,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,7 +47,9 @@ static const char* shader_uniform_names[] = {
 	[CG_SUNIFORM_MATRIX_MODEL] = "model",
 	[CG_SUNIFORM_MATRIX_VIEW] = "view",
 	[CG_SUNIFORM_MATRIX_PROJECTION] = "projection",
-	[CG_SUNIFORM_SAMPLER_TEXTURE] = "tex",
+	[CG_SUNIFORM_DIFFUSE_COLOR] = "diffuse_color",
+	[CG_SUNIFORM_DIFFUSE_TEXTURE] = "diffuse_tex",
+	[CG_SUNIFORM_DIFFUSE_TEXTURE_PROVIDED] = "diffuse_tex_provided",
 };
 
 void cg_start_render(void) {
@@ -250,7 +253,7 @@ struct cg_shader_prg cg_shader_prg_builder_build(struct cg_shader_prg_builder *b
 
 	if (status == false) {
 		glGetProgramInfoLog(prg.id, 1024, NULL, info_log);
-		cg_error("Shader program linking error: %s", info_log);
+		cg_error("Shader program linking error: %s\n", info_log);
 		cg_assert(0);
 	}
 
@@ -477,6 +480,40 @@ static void tn_read_file_callback(void *ctx, const char *filename, int is_mtl,
 	*buf = (char*)cg_ctx.file_read(filename, len);
 }
 
+static struct cg_texture load_tex_relative(const char *model_path, const char *image_path) {
+	char *dir_end = strrchr(model_path, '/');
+	if (dir_end != NULL) {
+		char *image_dir_end = strrchr(image_path, '/');
+		if (image_dir_end != NULL) {
+			*image_dir_end = '\0';
+			if (strstr(image_path, "..") == NULL) {
+				return cg_texture_from_file_2d(image_path);
+			}
+			*image_dir_end = '/';
+		}
+
+		int model_dir_len;
+
+		if (dir_end == NULL) {
+			model_dir_len = 0;
+		} else {
+			model_dir_len  = dir_end - model_path + 1;
+		}
+
+		char *abs_image_path = calloc(model_dir_len + strlen(image_path) + 1, sizeof(char));
+		sprintf(abs_image_path, "%.*s%s", model_dir_len, model_path, image_path);
+
+		struct cg_texture ret = cg_texture_from_file_2d(abs_image_path);
+
+		free(abs_image_path);
+
+		return ret;
+
+	} else {
+		return cg_texture_from_file_2d(image_path);
+	}
+}
+
 struct cg_model cg_model_from_obj_file(const char *file_path) {
 	cg_assert(file_path != NULL);
 
@@ -489,7 +526,7 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 	int ret = tinyobj_parse_obj(&tn_attrib, &tn_shapes, &tn_num_shapes,
 				    &tn_materials, &tn_num_materials,
 				    file_path, tn_read_file_callback, NULL,
-				    TINYOBJ_FLAG_TRIANGULATE);
+				    0);
 	cg_assert(ret == TINYOBJ_SUCCESS);
 
 	float x_min, x_max;
@@ -587,21 +624,25 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 		m.enable_color = true;
 
 		if (tn_materials[i].ambient_texname)
-			m.tex_ambient = cg_texture_from_file_2d(tn_materials[i].ambient_texname);
+			m.tex_ambient = load_tex_relative(file_path,
+							  tn_materials[i].ambient_texname);
 		if (tn_materials[i].diffuse_texname)
-			m.tex_diffuse = cg_texture_from_file_2d(tn_materials[i].diffuse_texname);
+			m.tex_diffuse = load_tex_relative(file_path,
+							  tn_materials[i].diffuse_texname);
 		if (tn_materials[i].specular_texname)
-			m.tex_specular = cg_texture_from_file_2d(tn_materials[i].specular_texname);
+			m.tex_specular = load_tex_relative(file_path,
+							   tn_materials[i].specular_texname);
 		if (tn_materials[i].specular_highlight_texname)
 			m.tex_specular_highlight =
-				cg_texture_from_file_2d(tn_materials[i].specular_highlight_texname);
+				load_tex_relative(file_path,
+						  tn_materials[i].specular_highlight_texname);
 		if (tn_materials[i].bump_texname)
-			m.tex_bump = cg_texture_from_file_2d(tn_materials[i].bump_texname);
+			m.tex_bump = load_tex_relative(file_path, tn_materials[i].bump_texname);
 		if (tn_materials[i].displacement_texname)
 			m.tex_displacement =
-				cg_texture_from_file_2d(tn_materials[i].displacement_texname);
+				load_tex_relative(file_path, tn_materials[i].displacement_texname);
 		if (tn_materials[i].alpha_texname)
-			m.tex_alpha = cg_texture_from_file_2d(tn_materials[i].alpha_texname);
+			m.tex_alpha = load_tex_relative(file_path, tn_materials[i].alpha_texname);
 
 		cg_da_append(&materials, m);
 	}
@@ -633,6 +674,7 @@ void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_mat
 void cg_model_draw(struct cg_model *model) {
 	for (size_t i = 0; i < model->num_meshes; i++) {
 		struct cg_material *material = &model->materials[model->mesh_to_material[i]];
+		struct cg_shader_prg *shader = &material->shader;
 
 		glUseProgram(material->shader.id);
 		cg_assert(!cg_check_gl());
@@ -649,10 +691,21 @@ void cg_model_draw(struct cg_model *model) {
 				1, false, cg_ctx.projection_matrix.d);
 		cg_assert(!cg_check_gl());
 
-		if (material->tex_diffuse.gl_tex != 0) {
+		if (material->tex_diffuse.gl_tex != 0 &&
+		    shader->uniform_locs[CG_SUNIFORM_DIFFUSE_TEXTURE] != -1) {
+			glUniform1i(shader->uniform_locs[CG_SUNIFORM_DIFFUSE_TEXTURE_PROVIDED], 1);
+			glUniform1i(shader->uniform_locs[CG_SUNIFORM_DIFFUSE_TEXTURE], 0);
+			cg_assert(!cg_check_gl());
 			glActiveTexture(GL_TEXTURE0);
 			cg_assert(!cg_check_gl());
 			glBindTexture(GL_TEXTURE_2D, material->tex_diffuse.gl_tex);
+			cg_assert(!cg_check_gl());
+		} else {
+			glUniform1i(shader->uniform_locs[CG_SUNIFORM_DIFFUSE_TEXTURE_PROVIDED], 0);
+			glUniform3f(material->shader.uniform_locs[CG_SUNIFORM_DIFFUSE_COLOR],
+				    material->color_diffuse.x,
+				    material->color_diffuse.y,
+				    material->color_diffuse.z);
 			cg_assert(!cg_check_gl());
 		}
 
