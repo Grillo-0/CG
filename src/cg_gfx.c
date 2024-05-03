@@ -441,13 +441,13 @@ static void find_coord_min_max(const float *vertices, const size_t vert_len,
 	*z_min = vertices[2];
 	*z_max = vertices[2];
 
-	for (size_t i = 3; i < vert_len * 3; i += 3) {
-		*x_min = CG_MIN(vertices[i + 0], *x_min);
-		*x_max = CG_MAX(vertices[i + 0], *x_max);
-		*y_min = CG_MIN(vertices[i + 1], *y_min);
-		*y_max = CG_MAX(vertices[i + 1], *y_max);
-		*z_min = CG_MIN(vertices[i + 2], *z_min);
-		*z_max = CG_MAX(vertices[i + 2], *z_max);
+	for (size_t i = 0; i < vert_len; i += 1) {
+		*x_min = CG_MIN(vertices[i * 3 + 0], *x_min);
+		*x_max = CG_MAX(vertices[i * 3 + 0], *x_max);
+		*y_min = CG_MIN(vertices[i * 3 + 1], *y_min);
+		*y_max = CG_MAX(vertices[i * 3 + 1], *y_max);
+		*z_min = CG_MIN(vertices[i * 3 + 2], *z_min);
+		*z_max = CG_MAX(vertices[i * 3 + 2], *z_max);
 	}
 }
 
@@ -489,7 +489,7 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_m
 		float z_min, z_max;
 		find_coord_min_max(ret.meshes[i].verts, ret.meshes[i].num_verts,
 				   &x_min, &x_max,
-				   &y_min, &x_max,
+				   &y_min, &y_max,
 				   &z_min, &z_max);
 		bounding_box.min.x = CG_MIN(bounding_box.min.x, x_min);
 		bounding_box.max.x = CG_MAX(bounding_box.max.x, x_max);
@@ -763,6 +763,78 @@ void cg_model_draw(struct cg_model *model) {
 
 		cg_assert(!cg_check_gl());
 	}
+}
+
+static struct cg_mesh mesh_cube() {
+	static bool created = false;
+	static float box_verts[8 * 3];
+
+	if (!created) {
+		created = true;
+
+		for (size_t z = 0; z <= 1; z++) {
+			for (size_t y = 0; y <= 1; y++) {
+				for (size_t x = 0; x <= 1; x++) {
+					size_t index = z * 4 * 3 + y * 3 * 2 + x * 3;
+					box_verts[index + 0] = x - 0.5;
+					box_verts[index + 1] = y - 0.5;
+					box_verts[index + 2] = z - 0.5;
+				}
+			}
+		}
+
+	}
+
+
+	static int box_indices[6 * 2 * 3] = {
+		0, 1, 2,
+		2, 1, 3,
+
+		4, 5, 6,
+		6, 5, 7,
+
+		2, 6, 3,
+		6, 7, 3,
+
+		0, 1, 4,
+		4, 5, 1,
+
+		1, 3, 7,
+		5, 1, 7,
+
+		0, 6, 2,
+		0, 4, 6,
+	};
+
+	return cg_mesh_create(box_verts, CG_ARRAY_LEN(box_verts) / 3,
+			      box_indices, CG_ARRAY_LEN(box_indices),
+			      NULL, 0,
+			      NULL, 0);
+}
+
+void cg_model_draw_bounding_box(struct cg_model *model) {
+	struct cg_box bounding_box = model->bounding_box;
+
+	struct cg_material material = cg_material_default();
+	material.tex_diffuse = (struct cg_texture){0};
+	material.color_diffuse = (struct cg_vec3f){1.0, 0.0, 0.0};
+
+	struct cg_mesh cube_mesh = mesh_cube();
+	struct cg_model box = cg_model_create(&cube_mesh, 1, &material, 1, (size_t[]){0});
+
+	struct cg_vec3f sizes = cg_vec3f_sub(bounding_box.max, bounding_box.min);
+
+
+	box.model_matrix = cg_mat4f_scale(sizes.x,
+					  sizes.y,
+					  sizes.z);
+
+	box.model_matrix = cg_mat4f_multiply(box.model_matrix, model->model_matrix);
+
+	bool fill = cg_get_fill();
+	cg_set_fill(false);
+	cg_model_draw(&box);
+	cg_set_fill(fill);
 }
 
 struct cg_camera cg_camera_create(const struct cg_vec3f pos,

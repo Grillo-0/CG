@@ -52,6 +52,8 @@ void cg_window_create(const char *window_name, size_t width, size_t height) {
 	cg_ctx.view_matrix = cg_mat4f_identity();
 	cg_ctx.projection_matrix = cg_mat4f_identity();
 	cg_reset_file_read_callback();
+
+	cg_ctx.fill = true;
 }
 
 static enum cg_keycode sdl2_to_cg_kc(SDL_Keycode kc) {
