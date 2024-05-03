@@ -61,6 +61,20 @@ void cg_end_render(void) {
 	SDL_GL_SwapWindow(cg_ctx.window.base);
 }
 
+void cg_set_fill(bool fill) {
+	cg_ctx.fill = fill;
+	if (fill) {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	} else {
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+	cg_assert(!cg_check_gl());
+}
+
+bool cg_get_fill() {
+	return cg_ctx.fill;
+}
+
 struct cg_mesh cg_mesh_create(const float *verts, const size_t num_verts,
 			      const int *indices, const size_t num_indices,
 			      const float *normals, const size_t num_normals,

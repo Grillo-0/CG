@@ -36,6 +36,8 @@ struct cg_contex {
 	struct cg_mat4f view_matrix;
 	struct cg_mat4f projection_matrix;
 
+	bool fill;
+
 	cg_file_reader_callback_t file_read;
 };
 
