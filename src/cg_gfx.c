@@ -461,7 +461,7 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_m
 	struct cg_model ret = {
 		.num_meshes = num_meshes,
 		.num_materials = num_materials,
-		.model_matrix = cg_mat4f_identity(),
+		.scale = (struct cg_vec3f){1, 1, 1},
 	};
 
 	if (materials == NULL) {
@@ -701,15 +701,36 @@ struct cg_model cg_model_from_obj_file(const char *file_path) {
 	return model;
 }
 
-void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix) {
-	memcpy(model->model_matrix.d, model_matrix.d, sizeof(model_matrix.d));
+void cg_model_set_position(struct cg_model *model, struct cg_vec3f position) {
+	model->position = position;
+}
+
+void cg_model_move(struct cg_model *model, struct cg_vec3f ds) {
+	model->position = cg_vec3f_add(model->position, ds);
+}
+
+void cg_model_set_rotation(struct cg_model *model, struct cg_vec3f rotation) {
+	model->rotation = rotation;
+}
+
+void cg_model_rotate(struct cg_model *model, struct cg_vec3f dr) {
+	model->rotation = cg_vec3f_add(model->rotation, dr);
+}
+
+void cg_model_set_scale(struct cg_model *model, struct cg_vec3f scale) {
+	model->scale = scale;
+}
+
+void cg_model_scale(struct cg_model *model, struct cg_vec3f ds) {
+	model->scale = cg_vec3f_mul(model->scale, ds);
 }
 
 struct cg_box cg_model_get_bounding_box(struct cg_model *model) {
 	struct cg_box ret = {0};
 
-	ret.min = cg_vec3f_mat4f_multiply(model->bounding_box.min, model->model_matrix);
-	ret.max = cg_vec3f_mat4f_multiply(model->bounding_box.max, model->model_matrix);
+	struct cg_mat4f m = cg_mat4f_model(model->position, model->scale, model->rotation);
+	ret.min = cg_vec3f_mat4f_multiply(model->bounding_box.min, m);
+	ret.max = cg_vec3f_mat4f_multiply(model->bounding_box.max, m);
 
 	return ret;
 }
@@ -718,12 +739,13 @@ void cg_model_draw(struct cg_model *model) {
 	for (size_t i = 0; i < model->num_meshes; i++) {
 		struct cg_material *material = &model->materials[model->mesh_to_material[i]];
 		struct cg_shader_prg *shader = &material->shader;
+		struct cg_mat4f m = cg_mat4f_model(model->position, model->scale, model->rotation);
 
 		glUseProgram(material->shader.id);
 		cg_assert(!cg_check_gl());
 
 		glUniformMatrix4fv(material->shader.uniform_locs[CG_SUNIFORM_MATRIX_MODEL],
-				1, false, model->model_matrix.d);
+				   1, false, m.d);
 		cg_assert(!cg_check_gl());
 
 		glUniformMatrix4fv(material->shader.uniform_locs[CG_SUNIFORM_MATRIX_VIEW],
@@ -824,12 +846,11 @@ void cg_model_draw_bounding_box(struct cg_model *model) {
 
 	struct cg_vec3f sizes = cg_vec3f_sub(bounding_box.max, bounding_box.min);
 
+	cg_model_set_scale(&box, sizes);
 
-	box.model_matrix = cg_mat4f_scale(sizes.x,
-					  sizes.y,
-					  sizes.z);
-
-	box.model_matrix = cg_mat4f_multiply(box.model_matrix, model->model_matrix);
+	cg_model_move(&box, model->position);
+	cg_model_scale(&box, model->scale);
+	cg_model_rotate(&box, model->rotation);
 
 	bool fill = cg_get_fill();
 	cg_set_fill(false);

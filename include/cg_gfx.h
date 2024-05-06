@@ -105,7 +105,9 @@ struct cg_model {
 
 	size_t *mesh_to_material;
 
-	struct cg_mat4f model_matrix;
+	struct cg_vec3f position;
+	struct cg_vec3f rotation;
+	struct cg_vec3f scale;
 
 	struct cg_box bounding_box;
 };
@@ -147,7 +149,12 @@ struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_m
 				const struct cg_material *materials, const size_t num_materials,
 				const size_t *mesh_to_material);
 struct cg_model cg_model_from_obj_file(const char *file_path);
-void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f model_matrix);
+void cg_model_set_position(struct cg_model *model, struct cg_vec3f position);
+void cg_model_move(struct cg_model *model, struct cg_vec3f ds);
+void cg_model_set_rotation(struct cg_model *model, struct cg_vec3f rotation);
+void cg_model_rotate(struct cg_model *model, struct cg_vec3f dr);
+void cg_model_set_scale(struct cg_model *model, struct cg_vec3f scale);
+void cg_model_scale(struct cg_model *model, struct cg_vec3f ds);
 struct cg_box cg_model_get_bounding_box(struct cg_model *model);
 void cg_model_draw(struct cg_model *model);
 void cg_model_draw_bounding_box(struct cg_model *model);

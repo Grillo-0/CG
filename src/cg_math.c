@@ -29,6 +29,14 @@ struct cg_vec3f cg_vec3f_sub(const struct cg_vec3f a, const struct cg_vec3f b) {
 	};
 }
 
+struct cg_vec3f cg_vec3f_mul(const struct cg_vec3f a, const struct cg_vec3f b) {
+	return (struct cg_vec3f) {
+		.x = a.x * b.x,
+		.y = a.y * b.y,
+		.z = a.z * b.z,
+	};
+}
+
 struct cg_vec3f cg_vec3f_cross(const struct cg_vec3f a, const struct cg_vec3f b) {
 	return (struct cg_vec3f) {
 		.x = a.y * b.z - a.z * b.y,
@@ -131,6 +139,23 @@ struct cg_mat4f cg_mat4f_rotate_z(float angle) {
 		.d[m(3, 3)] = 1.0f
 	};
 
+	return ret;
+}
+
+struct cg_mat4f cg_mat4f_model(const struct cg_vec3f translation,
+			       const struct cg_vec3f scale,
+			       const struct cg_vec3f rotation) {
+
+	struct cg_mat4f ret = cg_mat4f_identity();
+	ret = cg_mat4f_multiply(ret, cg_mat4f_rotate_x(rotation.x));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_rotate_y(rotation.y));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_rotate_z(rotation.z));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_scale(scale.x,
+						    scale.y,
+						    scale.z));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_translate(translation.x,
+							translation.y,
+							translation.z));
 	return ret;
 }
 

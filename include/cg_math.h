@@ -25,6 +25,7 @@ struct cg_mat4f {
 
 struct cg_vec3f cg_vec3f_add(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_sub(const struct cg_vec3f a, const struct cg_vec3f b);
+struct cg_vec3f cg_vec3f_mul(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_cross(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_normalize(const struct cg_vec3f a);
 
@@ -43,6 +44,9 @@ struct cg_mat4f cg_mat4f_translate(float x, float y, float z);
 struct cg_mat4f cg_mat4f_rotate_x(float angle);
 struct cg_mat4f cg_mat4f_rotate_y(float angle);
 struct cg_mat4f cg_mat4f_rotate_z(float angle);
+struct cg_mat4f cg_mat4f_model(const struct cg_vec3f translation,
+			       const struct cg_vec3f scale,
+			       const struct cg_vec3f rotation);
 struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f a, const struct cg_mat4f b);
 
 struct cg_vec3f cg_vec3f_mat4f_multiply(const struct cg_vec3f vec, const struct cg_mat4f mat);

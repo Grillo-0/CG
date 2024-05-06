@@ -63,12 +63,9 @@ int main(void) {
 
 	struct cg_model model = cg_model_create(&mesh, 1, &material, 1, (const size_t[]){0});
 
-	struct cg_mat4f transform = cg_mat4f_identity();
-	transform = cg_mat4f_multiply(transform, cg_mat4f_rotate_z(PI/4));
-	transform = cg_mat4f_multiply(transform, cg_mat4f_scale(0.25, 0.25, 1.0));
-	transform = cg_mat4f_multiply(transform, cg_mat4f_translate(0.5, 0.5, 0.0));
-
-	cg_model_put_model_matrix(&model, transform);
+	cg_model_rotate(&model, (struct cg_vec3f){0, 0, PI / 4});
+	cg_model_set_scale(&model, (struct cg_vec3f){0.25, 0.25, 1.0});
+	cg_model_move(&model, (struct cg_vec3f){0.5, 0.5, 0.0});
 
 	while (!cg_window_should_close()) {
 		cg_start_render();
