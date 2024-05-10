@@ -9,6 +9,10 @@
 #ifndef __CG_MATH_H__
 #define __CG_MATH_H__
 
+struct cg_vec2f {
+	float x, y;
+};
+
 struct cg_vec3f {
 	float x, y, z;
 };
@@ -21,8 +25,17 @@ struct cg_mat4f {
 
 struct cg_vec3f cg_vec3f_add(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_sub(const struct cg_vec3f a, const struct cg_vec3f b);
+struct cg_vec3f cg_vec3f_mul(const struct cg_vec3f a, const struct cg_vec3f b);
 struct cg_vec3f cg_vec3f_cross(const struct cg_vec3f a, const struct cg_vec3f b);
-struct cg_vec3f cg_vec3f_normal(const struct cg_vec3f a);
+struct cg_vec3f cg_vec3f_normalize(const struct cg_vec3f a);
+
+inline struct cg_vec3f cg_vec3f_from_array(const float *array) {
+	return (struct cg_vec3f) {
+		.x = array[0],
+		.y = array[1],
+		.z = array[2],
+	};
+}
 
 void cg_mat4f_print(const struct cg_mat4f *m);
 struct cg_mat4f cg_mat4f_identity(void);
@@ -31,6 +44,13 @@ struct cg_mat4f cg_mat4f_translate(float x, float y, float z);
 struct cg_mat4f cg_mat4f_rotate_x(float angle);
 struct cg_mat4f cg_mat4f_rotate_y(float angle);
 struct cg_mat4f cg_mat4f_rotate_z(float angle);
-struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f *a, const struct cg_mat4f *b);
+struct cg_mat4f cg_mat4f_model(const struct cg_vec3f translation,
+			       const struct cg_vec3f scale,
+			       const struct cg_vec3f rotation);
+struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f a, const struct cg_mat4f b);
+
+struct cg_vec3f cg_vec3f_mat4f_multiply(const struct cg_vec3f vec, const struct cg_mat4f mat);
+
+void cg_mat4f_rotation_to_angles(struct cg_mat4f matrix, float *pitch, float *yaw, float *roll);
 
 #endif // __CG_MATH_H__

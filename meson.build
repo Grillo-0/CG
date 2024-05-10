@@ -15,5 +15,6 @@ incdir = include_directories('include')
 bed = executable('bed', 'src/external/bed.c')
 
 subdir('resources')
+subdir('include')
 subdir('src')
 subdir('examples')

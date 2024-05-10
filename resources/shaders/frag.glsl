@@ -3,11 +3,16 @@
 in vec3 norm_frac;
 in vec2 uv_frac;
 
-out vec4 FragColor;
+out vec4 frag_color;
 
-uniform sampler2D tex;
+uniform vec3 diffuse_color;
+uniform sampler2D diffuse_tex;
+uniform bool diffuse_tex_provided;
 
 void main() {
-	float mag = dot(normalize(norm_frac), vec3(1.0,1,-1.0));
-	FragColor = mix(texture(tex, uv_frac), vec4(0.1, 0.1,0.1,1), mag);
+	if (diffuse_tex_provided) {
+		frag_color = texture(diffuse_tex, uv_frac);
+	} else {
+		frag_color = vec4(diffuse_color, 1.0);
+	}
 }

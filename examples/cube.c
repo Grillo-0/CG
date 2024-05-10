@@ -106,26 +106,24 @@ int main(void) {
 
 	struct cg_shader_prg shader_prog = cg_shader_prg_builder_build(&builder);
 
-	struct cg_model model = cg_model_create(mesh);
-	cg_model_put_shader_prg(&model, shader_prog);
+	struct cg_material material = {
+		.shader = shader_prog,
+		.enable_color = true,
+	};
+
+	struct cg_model model = cg_model_create(&mesh, 1, &material, 1, (const size_t[]){0});
+
+	cg_model_scale(&model, (struct cg_vec3f){0.25, 0.25, 0.25});
 
 	while (!cg_window_should_close()) {
-		struct cg_mat4f transform = cg_mat4f_identity();
-		struct cg_mat4f scale = cg_mat4f_scale(0.25, 0.25, 0.25);
-		struct cg_mat4f rotation_x = cg_mat4f_rotate_x(angle_x);
-		struct cg_mat4f rotation_y = cg_mat4f_rotate_y(angle_y);
 		angle_x += 0.01;
 		angle_y += 0.03;
+
+		cg_model_set_rotation(&model, (struct cg_vec3f){angle_x, angle_y, 0});
 
 		cg_start_render();
 
 		glClearColor(0.1, 0.1, 0.1, 1.0);
-
-		transform = cg_mat4f_multiply(&transform, &rotation_x);
-		transform = cg_mat4f_multiply(&transform, &rotation_y);
-		transform = cg_mat4f_multiply(&transform, &scale);
-
-		cg_model_put_model_matrix(&model, &transform);
 
 		cg_model_draw(&model);
 

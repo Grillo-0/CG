@@ -1,6 +1,8 @@
 resources_files = files([
+  'resources/suzzanne.mtl',
   'resources/suzzanne.obj',
   'resources/suzzanne_tex.png',
+  'resources/suzzanne_left.png',
 ])
 
 resources = custom_target(

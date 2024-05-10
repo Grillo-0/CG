@@ -29,6 +29,8 @@ void cg_window_create(const char *window_name, size_t width, size_t height) {
 	cg_assert(window != NULL);
 	cg_ctx.window = (struct cg_window) {
 		.base = window,
+		.width = width,
+		.height = height,
 	};
 
 	cg_info("Getting GL context...\n");
@@ -44,9 +46,14 @@ void cg_window_create(const char *window_name, size_t width, size_t height) {
 	cg_info("GLSL version: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	glEnable(GL_DEPTH_TEST);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND );
 
 	cg_ctx.view_matrix = cg_mat4f_identity();
 	cg_ctx.projection_matrix = cg_mat4f_identity();
+	cg_reset_file_read_callback();
+
+	cg_ctx.fill = true;
 }
 
 static enum cg_keycode sdl2_to_cg_kc(SDL_Keycode kc) {
@@ -123,6 +130,8 @@ static void check_events(void) {
 				case SDL_WINDOWEVENT_SIZE_CHANGED:
 				case SDL_WINDOWEVENT_RESIZED:
 					glViewport(0, 0, w->data1, w->data2);
+					cg_ctx.window.width = w->data1;
+					cg_ctx.window.height = w->data2;
 					break;
 			}
 			break;
@@ -134,6 +143,12 @@ static void check_events(void) {
 			case SDL_KEYUP:
 				cg_ctx.keys[sdl2_to_cg_kc(e.key.keysym.sym)] = false;
 			break;
+
+			case SDL_MOUSEMOTION:;
+				SDL_MouseMotionEvent *mouse = &e.motion;
+				cg_ctx.mouse_pos = (struct cg_vec2f){mouse->x, mouse->y};
+				cg_ctx.mouse_rel_pos = (struct cg_vec2f){mouse->xrel, mouse->yrel};
+			break;
 		}
 	}
 }
@@ -143,3 +158,42 @@ bool cg_window_should_close(void) {
 	return cg_ctx.window_should_close;
 }
 
+void cg_enable_cursor(void) {
+	cg_assert(!SDL_SetRelativeMouseMode(false));
+}
+
+void cg_disable_cursor(void) {
+	cg_assert(!SDL_SetRelativeMouseMode(true));
+}
+
+void cg_set_file_read_callback(cg_file_reader_callback_t func) {
+	cg_ctx.file_read = func;
+}
+
+static unsigned char* default_file_read_callback(const char *file_path, size_t *file_size) {
+	FILE *fp = fopen(file_path, "r");
+	cg_assert(fp != NULL);
+
+	int ret = fseek(fp, 0, SEEK_END);
+	cg_assert(ret == 0);
+	int size = ftell(fp);
+	cg_assert(size != -1);
+	ret = fseek(fp, 0, SEEK_SET);
+	cg_assert(ret == 0);
+
+	unsigned char *buf = malloc(sizeof(*buf) * size);
+	cg_assert(buf != NULL);
+
+	fread(buf, sizeof(*buf) * size, 1, fp);
+	cg_assert(ferror(fp) == 0);
+
+	ret = fclose(fp);
+	cg_assert(ret == 0);
+
+	*file_size = size;
+	return buf;
+}
+
+void cg_reset_file_read_callback() {
+		cg_ctx.file_read = default_file_read_callback;
+}

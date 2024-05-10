@@ -55,38 +55,33 @@ int main(void) {
 
 	struct cg_shader_prg shader_prog = cg_shader_prg_builder_build(&builder);
 
-	struct cg_model model = cg_model_create(mesh);
-	cg_model_put_shader_prg(&model, shader_prog);
+	struct cg_material material = {
+		.shader = shader_prog,
+		.enable_color = true,
+	};
+
+	struct cg_model model = cg_model_create(&mesh, 1, &material, 1, (const size_t[]){0});
+
+	cg_model_scale(&model, (struct cg_vec3f){0.25, 0.25, 0.25});
 
 	while (!cg_window_should_close()) {
 		if (cg_keycode_is_down(CG_KEY_A))
-			x -= 0.01;
+			cg_model_move(&model, (struct cg_vec3f){-0.1, 0, 0});
 
 		if (cg_keycode_is_down(CG_KEY_D))
-			x += 0.01;
+			cg_model_move(&model, (struct cg_vec3f){0.1, 0, 0});
 
 		if (cg_keycode_is_down(CG_KEY_W))
-			y += 0.01;
+			cg_model_move(&model, (struct cg_vec3f){0, 0.1, 0});
 
 		if (cg_keycode_is_down(CG_KEY_S))
-			y -= 0.01;
+			cg_model_move(&model, (struct cg_vec3f){0, -0.1, 0});
 
 		if (cg_keycode_is_down(CG_KEY_Q))
-			angle += 0.1;
+			cg_model_rotate(&model, (struct cg_vec3f){0, 0, 0.1});
 
 		if (cg_keycode_is_down(CG_KEY_E))
-			angle -= 0.1;
-
-		struct cg_mat4f transform = cg_mat4f_identity();
-		struct cg_mat4f translate = cg_mat4f_translate(x, y, 0.0);
-		struct cg_mat4f scale = cg_mat4f_scale(0.25, 0.25, 1.0);
-		struct cg_mat4f rotate = cg_mat4f_rotate_z(angle);
-
-		transform = cg_mat4f_multiply(&transform, &rotate);
-		transform = cg_mat4f_multiply(&transform, &scale);
-		transform = cg_mat4f_multiply(&transform, &translate);
-
-		cg_model_put_model_matrix(&model, &transform);
+			cg_model_rotate(&model, (struct cg_vec3f){0, 0, -0.1});
 
 		cg_start_render();
 

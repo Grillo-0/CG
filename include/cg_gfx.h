@@ -11,8 +11,13 @@
 
 #include <GL/glew.h>
 
+#include "cg_gfx.h"
 #include "cg_math.h"
 #include "cg_util.h"
+
+struct cg_box {
+	struct cg_vec3f min, max;
+};
 
 enum cg_shader_attrib_loc {
 	CG_SATTRIB_LOC_VERTEX_POSITION,
@@ -24,7 +29,9 @@ enum cg_shader_uniform {
 	CG_SUNIFORM_MATRIX_MODEL,
 	CG_SUNIFORM_MATRIX_VIEW,
 	CG_SUNIFORM_MATRIX_PROJECTION,
-	CG_SUNIFORM_SAMPLER_TEXTURE,
+	CG_SUNIFORM_DIFFUSE_COLOR,
+	CG_SUNIFORM_DIFFUSE_TEXTURE,
+	CG_SUNIFORM_DIFFUSE_TEXTURE_PROVIDED,
 	CG_SUNIFORM_SIZE,
 };
 
@@ -66,43 +73,99 @@ struct cg_texture {
 	unsigned int gl_tex;
 };
 
+struct cg_material {
+	struct cg_shader_prg shader;
+
+	struct cg_vec3f color_ambient;
+	struct cg_vec3f color_diffuse;
+	struct cg_vec3f color_specular;
+	struct cg_vec3f color_transmittance;
+	struct cg_vec3f color_emission;
+	float specular_exponent;
+	float index_of_refraction;
+	float opacity;
+
+	bool enable_color;
+
+	struct cg_texture tex_ambient;
+	struct cg_texture tex_diffuse;
+	struct cg_texture tex_specular;
+	struct cg_texture tex_specular_highlight;
+	struct cg_texture tex_bump;
+	struct cg_texture tex_displacement;
+	struct cg_texture tex_alpha;
+};
+
 struct cg_model {
-	struct cg_shader_prg prg;
-	struct cg_mesh mesh;
-	struct cg_mat4f model_matrix;
-	struct cg_texture texture;
+	size_t num_meshes;
+	struct cg_mesh *meshes;
+
+	size_t num_materials;
+	struct cg_material *materials;
+
+	size_t *mesh_to_material;
+
+	struct cg_vec3f position;
+	struct cg_vec3f rotation;
+	struct cg_vec3f scale;
+
+	struct cg_box bounding_box;
+};
+
+struct cg_camera {
+	struct cg_vec3f pos;
+	struct cg_mat4f rotation;
+
+	float fov;
+	float far_plane;
+	float near_plane;
 };
 
 void cg_start_render(void);
 void cg_end_render(void);
 
+void cg_set_fill(bool fill);
+bool cg_get_fill();
+
 struct cg_mesh cg_mesh_create(const float *verts, const size_t num_verts,
 			      const int *indices, const size_t num_indices,
 			      const float *normals, const size_t num_normals,
 			      const float *uvs, const size_t num_uvs);
-struct cg_mesh cg_mesh_from_obj_data(char *data, size_t size);
 
 void cg_shader_prg_builder_add_shader(struct cg_shader_prg_builder *builder, const char *src,
 				      int length,
 				      GLenum type);
 struct cg_shader_prg cg_shader_prg_builder_build(struct cg_shader_prg_builder *builder);
+struct cg_shader_prg cg_shader_prg_default();
 
 struct cg_texture cg_texture_create_2d(const unsigned char *data, size_t width, size_t height,
 				       int internal_format, int format);
+struct cg_texture cg_texture_from_file_2d(const char *file_path);
+struct cg_texture cg_texture_default();
 
-struct cg_model cg_model_create(struct cg_mesh mesh);
-void cg_model_put_shader_prg(struct cg_model *model, struct cg_shader_prg prg);
-void cg_model_put_model_matrix(struct cg_model *model, struct cg_mat4f *model_matrix);
-void cg_model_put_texture(struct cg_model *model, struct cg_texture texture);
+struct cg_material cg_material_default();
+
+struct cg_model cg_model_create(const struct cg_mesh *meshes, const size_t num_meshes,
+				const struct cg_material *materials, const size_t num_materials,
+				const size_t *mesh_to_material);
+struct cg_model cg_model_from_obj_file(const char *file_path);
+void cg_model_set_position(struct cg_model *model, struct cg_vec3f position);
+void cg_model_move(struct cg_model *model, struct cg_vec3f ds);
+void cg_model_set_rotation(struct cg_model *model, struct cg_vec3f rotation);
+void cg_model_rotate(struct cg_model *model, struct cg_vec3f dr);
+void cg_model_set_scale(struct cg_model *model, struct cg_vec3f scale);
+void cg_model_scale(struct cg_model *model, struct cg_vec3f ds);
+struct cg_box cg_model_get_bounding_box(struct cg_model *model);
 void cg_model_draw(struct cg_model *model);
+void cg_model_draw_bounding_box(struct cg_model *model);
 
-void cg_camera_look_at(const struct cg_vec3f eye,
-		       const struct cg_vec3f target,
-		       const struct cg_vec3f up);
-void cg_camera_FPS(const struct cg_vec3f camera_pos,
-		   const float pitch_angle,
-		   const float yaw_angle);
+struct cg_camera cg_camera_create(const struct cg_vec3f pos,
+				  const float fov,
+				  const float near_plane,
+				  const float far_plane);
 
-void cg_camera_set_perspective(float fov, float aspect, float near_plane, float far_plane);
+void cg_camera_look_at(struct cg_camera *camera, const struct cg_vec3f target);
+
+void cg_camera_update_FPS(struct cg_camera *camera);
 
 #endif // __CG_GFX_H__

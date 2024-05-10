@@ -41,7 +41,6 @@ int main(void) {
 					     NULL, 0,
 					     NULL, 0,
 					     NULL, 0);
-	struct cg_model model = cg_model_create(mesh);
 
 	struct cg_shader_prg_builder builder = {0};
 
@@ -50,7 +49,12 @@ int main(void) {
 
 	struct cg_shader_prg shader_prog = cg_shader_prg_builder_build(&builder);
 
-	cg_model_put_shader_prg(&model, shader_prog);
+	struct cg_material material = {
+		.shader = shader_prog,
+		.enable_color = true,
+	};
+
+	struct cg_model model = cg_model_create(&mesh, 1, &material, 1, (const size_t[]){0});
 
 	while (!cg_window_should_close()) {
 		cg_start_render();

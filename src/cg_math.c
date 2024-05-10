@@ -29,6 +29,14 @@ struct cg_vec3f cg_vec3f_sub(const struct cg_vec3f a, const struct cg_vec3f b) {
 	};
 }
 
+struct cg_vec3f cg_vec3f_mul(const struct cg_vec3f a, const struct cg_vec3f b) {
+	return (struct cg_vec3f) {
+		.x = a.x * b.x,
+		.y = a.y * b.y,
+		.z = a.z * b.z,
+	};
+}
+
 struct cg_vec3f cg_vec3f_cross(const struct cg_vec3f a, const struct cg_vec3f b) {
 	return (struct cg_vec3f) {
 		.x = a.y * b.z - a.z * b.y,
@@ -134,13 +142,30 @@ struct cg_mat4f cg_mat4f_rotate_z(float angle) {
 	return ret;
 }
 
-struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f *a, const struct cg_mat4f *b) {
+struct cg_mat4f cg_mat4f_model(const struct cg_vec3f translation,
+			       const struct cg_vec3f scale,
+			       const struct cg_vec3f rotation) {
+
+	struct cg_mat4f ret = cg_mat4f_identity();
+	ret = cg_mat4f_multiply(ret, cg_mat4f_rotate_x(rotation.x));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_rotate_y(rotation.y));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_rotate_z(rotation.z));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_scale(scale.x,
+						    scale.y,
+						    scale.z));
+	ret = cg_mat4f_multiply(ret, cg_mat4f_translate(translation.x,
+							translation.y,
+							translation.z));
+	return ret;
+}
+
+struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f a, const struct cg_mat4f b) {
 	struct cg_mat4f ret = { 0 };
 
 	for (size_t row = 0; row < 4; row++) {
 		for (size_t col = 0; col < 4; col++) {
 			for (size_t i  = 0; i < 4; i++) {
-				ret.d[m(col, row)] += a->d[m(col, i)] * b->d[m(i, row)];
+				ret.d[m(col, row)] += a.d[m(col, i)] * b.d[m(i, row)];
 			}
 		}
 	}
@@ -148,3 +173,28 @@ struct cg_mat4f cg_mat4f_multiply(const struct cg_mat4f *a, const struct cg_mat4
 	return ret;
 }
 
+struct cg_vec3f cg_vec3f_mat4f_multiply(const struct cg_vec3f vec, const struct cg_mat4f mat) {
+	struct cg_vec3f res;
+
+	res.x = vec.x * mat.d[m(0, 0)] + vec.y * mat.d[m(0, 1)] + vec.z * mat.d[m(0, 2)];
+	res.y = vec.x * mat.d[m(1, 0)] + vec.y * mat.d[m(1, 1)] + vec.z * mat.d[m(1, 2)];
+	res.z = vec.x * mat.d[m(2, 0)] + vec.y * mat.d[m(2, 1)] + vec.z * mat.d[m(2, 2)];
+
+	res.x += mat.d[m(0, 3)];
+	res.y += mat.d[m(1, 3)];
+	res.z += mat.d[m(2, 3)];
+
+	return res;
+}
+
+void cg_mat4f_rotation_to_angles(struct cg_mat4f matrix, float *pitch, float *yaw,  float *roll) {
+	if (pitch)
+		*pitch = atan2f(matrix.d[m(1, 2)], matrix.d[m(2, 2)]);
+
+	if (yaw)
+		*yaw = atan2f(-matrix.d[m(0, 2)],
+				((matrix.d[m(2, 2)] > 0) * 2 - 1 ) * hypotf(matrix.d[m(1, 2)], matrix.d[m(2, 2)]));
+
+	if (roll)
+		*roll = atan2f(matrix.d[m(0, 1)], matrix.d[m(0, 1)]);
+}
